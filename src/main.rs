@@ -5,6 +5,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::Path,
+    time::Instant,
 };
 use walkdir::WalkDir;
 
@@ -12,6 +13,7 @@ use walkdir::WalkDir;
 pub enum BelmarshError {}
 
 fn main() -> Result<(), BelmarshError> {
+    let start = Instant::now();
     let base_path_str = "../avaritia/src";
     let base_path = Path::new(base_path_str).canonicalize().unwrap();
 
@@ -88,6 +90,9 @@ fn main() -> Result<(), BelmarshError> {
         }).sum::<usize>();
 
     println!("Total imports from outside own files: {}", total_count);
+
+    let duration = start.elapsed();
+    println!("Time elapsed: {:?}", duration);
 
     Ok(())
 }
