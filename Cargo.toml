@@ -1,0 +1,10 @@
+[package]
+name = "belmarsh"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lazy_static = "1.5.0"
+rayon = "1.11.0"
+regex = "1.11.1"
+walkdir = "2.5.0"
