@@ -27,7 +27,15 @@ fn main() -> Result<(), BelmarshError> {
             let entry = entry.unwrap();
             let parent_dir = entry.path().parent().unwrap_or(Path::new(""));
             if entry.file_type().is_file() {
-                let file = File::open(entry.path()).unwrap();
+                let path = entry.path();
+                let cannonicalized_path = path.canonicalize().unwrap();
+                let adjusted_file_path = cannonicalized_path
+                    .strip_prefix(&base_path)
+                    .unwrap();
+
+                let module = adjusted_file_path.components().next().unwrap();
+
+                let file = File::open(path).unwrap();
 
                 let reader = BufReader::new(file);
 
@@ -47,7 +55,12 @@ fn main() -> Result<(), BelmarshError> {
                                 if let Ok(relative_path) =
                                     canonicalized_path.strip_prefix(&base_path)
                                 {
-                                    println!("{}", relative_path.display());
+                                    let imported_module =
+                                        relative_path.components().next().unwrap();
+
+                                    if module != imported_module {
+                                        println!("{} {} {} {}", adjusted_file_path.display(), relative_path.display(), module.as_os_str().display(), imported_module.as_os_str().display());
+                                    }
                                 } else {
                                     // Handle imports that point outside the root directory
                                     eprintln!(
