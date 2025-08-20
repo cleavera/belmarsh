@@ -43,14 +43,17 @@ fn main() -> Result<(), BelmarshError> {
                 for line in reader.lines() {
                     if let Some(captures) = IMPORT_REGEX.captures(&line.unwrap()) {
                         if let Some(path) = captures.get(1) {
-                            let mut import_path_raw = path.as_str().to_owned();
-
-                            if !import_path_raw.ends_with(".ts") {
-                                import_path_raw = format!("{}.ts", import_path_raw);
-                            }
-
-                            let import_path = Path::new(&import_path_raw);
-                            let resolved_path = parent_dir.join(import_path);
+                            let import_path_raw = path.as_str();
+                            let resolved_path = if import_path_raw.ends_with(".ts") {
+                                parent_dir.join(import_path_raw)
+                            } else {
+                                let ts_path = parent_dir.join(format!("{}.ts", import_path_raw));
+                                if ts_path.exists() {
+                                    ts_path
+                                } else {
+                                    parent_dir.join(format!("{}/index.ts", import_path_raw))
+                                }
+                            };
 
                             if let Ok(canonicalized_path) = resolved_path.canonicalize() {
                                 if let Ok(relative_path) =
@@ -61,7 +64,6 @@ fn main() -> Result<(), BelmarshError> {
 
                                     if module != imported_module {
                                         count = count + 1;
-                                        println!("{} {} {} {}", adjusted_file_path.display(), relative_path.display(), module.as_os_str().display(), imported_module.as_os_str().display());
                                     }
                                 } else {
                                     // Handle imports that point outside the root directory
