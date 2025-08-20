@@ -20,10 +20,11 @@ fn main() -> Result<(), BelmarshError> {
             Regex::new(r"import\s*\{[^}]*\}\s*from\s*'(\.[^']+)';").unwrap();
     }
 
-    WalkDir::new(&base_path)
+    let total_count = WalkDir::new(&base_path)
         .into_iter()
         .par_bridge()
-        .for_each(|entry| {
+        .map(|entry| {
+            let mut count = 0;
             let entry = entry.unwrap();
             let parent_dir = entry.path().parent().unwrap_or(Path::new(""));
             if entry.file_type().is_file() {
@@ -59,6 +60,7 @@ fn main() -> Result<(), BelmarshError> {
                                         relative_path.components().next().unwrap();
 
                                     if module != imported_module {
+                                        count = count + 1;
                                         println!("{} {} {} {}", adjusted_file_path.display(), relative_path.display(), module.as_os_str().display(), imported_module.as_os_str().display());
                                     }
                                 } else {
@@ -79,7 +81,11 @@ fn main() -> Result<(), BelmarshError> {
                     }
                 }
             }
-        });
+
+            count
+        }).sum::<usize>();
+
+    println!("Total imports from outside own files: {}", total_count);
 
     Ok(())
 }
