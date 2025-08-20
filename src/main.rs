@@ -5,6 +5,7 @@ use std::{
     fs::File,
     io::{BufRead, BufReader},
     path::{Path, PathBuf},
+    sync::atomic::{AtomicUsize, Ordering},
     time::Instant,
 };
 use walkdir::WalkDir;
@@ -46,10 +47,12 @@ fn main() -> Result<(), BelmarshError> {
             Regex::new(r"import\s*\{[^}]*\}\s*from\s*'(\.[^']+)';").expect("Failed to compile regex");
     }
 
+    let file_check_count = AtomicUsize::new(0);
     let counts: Result<Vec<usize>, BelmarshError> = WalkDir::new(&base_path)
         .into_iter()
         .par_bridge()
         .map(|entry| -> Result<usize, BelmarshError> {
+            file_check_count.fetch_add(1, Ordering::SeqCst);
             let entry = entry?;
             if !entry.file_type().is_file() || entry.path().extension().map_or(true, |ext| ext != "ts") {
                 return Ok(0);
@@ -115,8 +118,10 @@ fn main() -> Result<(), BelmarshError> {
         }).collect();
 
     let total_count = counts?.into_iter().sum::<usize>();
+    let total_files_checked = file_check_count.load(Ordering::SeqCst);
 
     println!("Total imports from outside own modules: {}", total_count);
+    println!("Total files checked: {}", total_files_checked);
 
     let duration = start.elapsed();
     println!("Time elapsed: {:?}", duration);
