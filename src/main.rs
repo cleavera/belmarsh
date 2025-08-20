@@ -50,72 +50,73 @@ fn main() -> Result<(), BelmarshError> {
         .into_iter()
         .par_bridge()
         .map(|entry| -> Result<usize, BelmarshError> {
-            let mut count = 0;
             let entry = entry?;
+            if !entry.file_type().is_file() || entry.path().extension().map_or(true, |ext| ext != "ts") {
+                return Ok(0);
+            }
+
+            let mut count = 0;
             let parent_dir = entry.path().parent().unwrap_or(Path::new(""));
-            if entry.file_type().is_file() {
-                let path = entry.path();
-                let cannonicalized_path = path.canonicalize().map_err(|e| BelmarshError::Io(e, path.to_path_buf()))?;
-                let adjusted_file_path = cannonicalized_path
-                    .strip_prefix(&base_path)?;
+            let path = entry.path();
+            let cannonicalized_path = path.canonicalize().map_err(|e| BelmarshError::Io(e, path.to_path_buf()))?;
+            let adjusted_file_path = cannonicalized_path
+                .strip_prefix(&base_path)?;
 
-                let module = adjusted_file_path.components().next().ok_or_else(|| BelmarshError::PathError(format!("Could not get module from path: {}", adjusted_file_path.display())))?;
+            let module = adjusted_file_path.components().next().ok_or_else(|| BelmarshError::PathError(format!("Could not get module from path: {}", adjusted_file_path.display())))?;
 
-                let file = File::open(path).map_err(|e| BelmarshError::Io(e, path.to_path_buf()))?;
+            let file = File::open(path).map_err(|e| BelmarshError::Io(e, path.to_path_buf()))?;
 
-                let reader = BufReader::new(file);
+            let reader = BufReader::new(file);
 
-                for line in reader.lines() {
-                    let line = line.map_err(|e| BelmarshError::Io(e, path.to_path_buf()))?;
-                    if let Some(captures) = IMPORT_REGEX.captures(&line) {
-                        if let Some(path_capture) = captures.get(1) {
-                            let import_path_raw = path_capture.as_str();
-                            let resolved_path = if import_path_raw.ends_with(".ts") {
-                                parent_dir.join(import_path_raw)
+            for line in reader.lines() {
+                let line = line.map_err(|e| BelmarshError::Io(e, path.to_path_buf()))?;
+                if let Some(captures) = IMPORT_REGEX.captures(&line) {
+                    if let Some(path_capture) = captures.get(1) {
+                        let import_path_raw = path_capture.as_str();
+                        let resolved_path = if import_path_raw.ends_with(".ts") {
+                            parent_dir.join(import_path_raw)
+                        } else {
+                            let ts_path = parent_dir.join(format!("{}.ts", import_path_raw));
+                            if ts_path.exists() {
+                                ts_path
                             } else {
-                                let ts_path = parent_dir.join(format!("{}.ts", import_path_raw));
-                                if ts_path.exists() {
-                                    ts_path
-                                } else {
-                                    parent_dir.join(format!("{}/index.ts", import_path_raw))
-                                }
-                            };
+                                parent_dir.join(format!("{}/index.ts", import_path_raw))
+                            }
+                        };
 
-                            if let Ok(canonicalized_path) = resolved_path.canonicalize() {
-                                if let Ok(relative_path) =
-                                    canonicalized_path.strip_prefix(&base_path)
-                                {
-                                    let imported_module =
-                                        relative_path.components().next().ok_or_else(|| BelmarshError::PathError(format!("Could not get imported module from path: {}", relative_path.display())))?;
+                        if let Ok(canonicalized_path) = resolved_path.canonicalize() {
+                            if let Ok(relative_path) =
+                                canonicalized_path.strip_prefix(&base_path)
+                            {
+                                let imported_module =
+                                    relative_path.components().next().ok_or_else(|| BelmarshError::PathError(format!("Could not get imported module from path: {}", relative_path.display())))?;
 
-                                    if module != imported_module {
-                                        count = count + 1;
-                                    }
-                                } else {
-                                    // Handle imports that point outside the root directory
-                                    eprintln!(
-                                        "Warning: Path is outside root: {} {}",
-                                        canonicalized_path.display(),
-                                        base_path.display()
-                                    );
+                                if module != imported_module {
+                                    count = count + 1;
                                 }
                             } else {
+                                // Handle imports that point outside the root directory
                                 eprintln!(
-                                    "Warning: Could not canonicalize path: {}",
-                                    resolved_path.display(),
+                                    "Warning: Path is outside root: {} {}",
+                                    canonicalized_path.display(),
+                                    base_path.display()
                                 );
                             }
+                        } else {
+                            eprintln!(
+                                "Warning: Could not canonicalize path: {}",
+                                resolved_path.display(),
+                            );
                         }
                     }
                 }
             }
-
             Ok(count)
         }).collect();
 
     let total_count = counts?.into_iter().sum::<usize>();
 
-    println!("Total imports from outside own files: {}", total_count);
+    println!("Total imports from outside own modules: {}", total_count);
 
     let duration = start.elapsed();
     println!("Time elapsed: {:?}", duration);
