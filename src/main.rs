@@ -13,6 +13,7 @@ use walkdir::WalkDir;
 #[derive(Debug)]
 pub enum BelmarshError {
     CouldNotParseRepository(RepositoryPathFromStringError),
+    CouldNotGetFiles(RepositoryFilesError),
     CouldNotParseFilePath(FilePathFromEntryError),
     CouldNotReadFile(FilePathContentsError),
     InvalidFile(RepositoryChildPathFromFilePathError),
@@ -23,6 +24,19 @@ pub enum BelmarshError {
     PathError(String),
     Regex(regex::Error),
     ParseImportPath(ImportPathFromImportStringError, FilePath),
+    AnalyzedFileError(AnalyzedFileFromEntryError),
+}
+
+impl From<RepositoryFilesError> for BelmarshError {
+    fn from(value: RepositoryFilesError) -> Self {
+        BelmarshError::CouldNotGetFiles(value)
+    }
+}
+
+impl From<AnalyzedFileFromEntryError> for BelmarshError {
+    fn from(value: AnalyzedFileFromEntryError) -> Self {
+        BelmarshError::AnalyzedFileError(value)
+    }
 }
 
 impl From<RepositoryChildPathModuleError> for BelmarshError {
@@ -67,8 +81,116 @@ impl From<regex::Error> for BelmarshError {
     }
 }
 
+#[derive(Debug)]
+pub enum AnalyzedFileFromEntryError {
+    WalkdirError(walkdir::Error),
+    FilePathError(FilePathFromEntryError),
+    ModuleError(RepositoryChildPathModuleError),
+    IoError(std::io::Error, PathBuf),
+    ParseImportPath(ImportPathFromImportStringError, FilePath),
+    InvalidImport(RepositoryChildPathFromImportPathError, FilePath),
+}
+
+impl From<walkdir::Error> for AnalyzedFileFromEntryError {
+    fn from(value: walkdir::Error) -> Self {
+        AnalyzedFileFromEntryError::WalkdirError(value)
+    }
+}
+
+impl From<FilePathFromEntryError> for AnalyzedFileFromEntryError {
+    fn from(value: FilePathFromEntryError) -> Self {
+        AnalyzedFileFromEntryError::FilePathError(value)
+    }
+}
+
+impl From<RepositoryChildPathModuleError> for AnalyzedFileFromEntryError {
+    fn from(value: RepositoryChildPathModuleError) -> Self {
+        AnalyzedFileFromEntryError::ModuleError(value)
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct FilePath(PathBuf);
+
+use once_cell::sync::OnceCell;
+
+pub struct AnalyzedFile {
+    file_path: FilePath,
+    base_path: RepositoryPath,
+
+    module: OnceCell<Module>,
+    imports: OnceCell<Vec<ImportPath>>,
+}
+
+impl AnalyzedFile {
+    pub fn try_from_entry(
+        entry: walkdir::DirEntry,
+        base_path: &RepositoryPath,
+    ) -> Result<Self, AnalyzedFileFromEntryError> {
+        let file_path: FilePath = entry
+            .try_into()
+            .map_err(AnalyzedFileFromEntryError::FilePathError)?;
+
+        Ok(AnalyzedFile {
+            file_path,
+            base_path: base_path.clone(),
+            module: OnceCell::new(),
+            imports: OnceCell::new(),
+        })
+    }
+
+    pub fn file_path(&self) -> &FilePath {
+        &self.file_path
+    }
+
+    pub fn module(&self) -> Result<&Module, BelmarshError> {
+        self.module.get_or_try_init(|| {
+            RepositoryChildPath::from_file_path(&self.file_path, &self.base_path)?
+                .module()
+                .map_err(BelmarshError::from)
+        })
+    }
+
+    pub fn imports(&self) -> Result<&[ImportPath], BelmarshError> {
+        lazy_static! {
+            static ref IMPORT_REGEX: Regex =
+                Regex::new(r"import\s*\{[^}]*\}\s*from\s*'(\.[^']+)';")
+                    .expect("Failed to compile regex");
+        }
+
+        self.imports
+            .get_or_try_init(|| {
+                let mut imports = Vec::new();
+                let reader = self.file_path.contents()?;
+                let parent_dir: FileParentPath = FileParentPath::from_file_path(&self.file_path);
+
+                for line in reader.lines() {
+                    let line = line
+                        .map_err(|e| BelmarshError::Io(e, self.file_path.as_ref().to_path_buf()))?;
+
+                    if let Some(captures) = IMPORT_REGEX.captures(&line) {
+                        if let Some(path_capture) = captures.get(1) {
+                            let import_path = match ImportPath::from_import_string(
+                                path_capture.as_str(),
+                                &parent_dir,
+                            )
+                            .map_err(|e| BelmarshError::ParseImportPath(e, self.file_path.clone()))
+                            {
+                                Ok(path) => path,
+                                Err(e) => {
+                                    eprintln!("{:?}", e);
+                                    continue;
+                                }
+                            };
+                            imports.push(import_path);
+                        }
+                    }
+                }
+                Ok(imports)
+            })
+            .map(|v| v.as_slice())
+    }
+}
 
 #[derive(Debug)]
 pub enum FilePathContentsError {
@@ -108,6 +230,7 @@ impl TryFrom<walkdir::DirEntry> for FilePath {
 #[derive(Debug)]
 pub enum FilePathFromPathBufError {
     NotAValidFile(PathBuf),
+    Io(std::io::Error, PathBuf),
 }
 
 impl TryFrom<PathBuf> for FilePath {
@@ -118,8 +241,8 @@ impl TryFrom<PathBuf> for FilePath {
             return Err(FilePathFromPathBufError::NotAValidFile(path));
         }
 
-        Ok(FilePath(path.canonicalize().map_err(|_| {
-            FilePathFromPathBufError::NotAValidFile(path.to_path_buf())
+        Ok(FilePath(path.canonicalize().map_err(|e| {
+            FilePathFromPathBufError::Io(e, path.to_path_buf())
         })?))
     }
 }
@@ -151,6 +274,7 @@ pub enum RepositoryPathFromStringError {
     IoError(std::io::Error, String),
 }
 
+#[derive(Clone, Debug)]
 pub struct RepositoryPath(PathBuf);
 
 impl TryFrom<String> for RepositoryPath {
@@ -332,6 +456,15 @@ impl From<ModuleFromComponentError> for RepositoryChildPathModuleError {
     }
 }
 
+impl From<RepositoryChildPathFromFilePathError> for RepositoryChildPathModuleError {
+    fn from(value: RepositoryChildPathFromFilePathError) -> Self {
+        RepositoryChildPathModuleError::CouldNotGetModule(format!(
+            "Could not get module from file path error: {:?}",
+            value
+        ))
+    }
+}
+
 fn component_to_string(component: Component) -> String {
     match component {
         Component::Normal(os_str) => os_str.to_string_lossy().into_owned(),
@@ -364,63 +497,108 @@ impl From<String> for Module {
     }
 }
 
+pub struct Repository(RepositoryPath);
+
+pub enum RepositoryFromStringError {
+    CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
+}
+
+impl From<RepositoryPathFromStringError> for RepositoryFromStringError {
+    fn from(value: RepositoryPathFromStringError) -> Self {
+        RepositoryFromStringError::CouldNotCreateRepositoryPath(value)
+    }
+}
+
+impl TryFrom<String> for Repository {
+    type Error = RepositoryPathFromStringError;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Ok(Repository(value.try_into()?))
+    }
+}
+
+impl TryFrom<&str> for Repository {
+    type Error = RepositoryPathFromStringError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        Ok(Repository(value.try_into()?))
+    }
+}
+
+#[derive(Debug)]
+pub enum RepositoryFilesError {
+    CannotScanFiles(walkdir::Error),
+    CannotAnalyzeFile(AnalyzedFileFromEntryError),
+}
+
+impl From<AnalyzedFileFromEntryError> for RepositoryFilesError {
+    fn from(value: AnalyzedFileFromEntryError) -> Self {
+        RepositoryFilesError::CannotAnalyzeFile(value)
+    }
+}
+
+impl From<walkdir::Error> for RepositoryFilesError {
+    fn from(value: walkdir::Error) -> Self {
+        RepositoryFilesError::CannotScanFiles(value)
+    }
+}
+
+impl Repository {
+    pub fn files(&self) -> rayon::iter::Map<rayon::iter::IterBridge<walkdir::IntoIter>, impl Fn(Result<walkdir::DirEntry, walkdir::Error>) -> Result<AnalyzedFile, RepositoryFilesError>> {
+        WalkDir::new(self.0.as_ref())
+            .into_iter()
+            .par_bridge()
+            .map(|entry| -> Result<AnalyzedFile, RepositoryFilesError> {
+                Ok(AnalyzedFile::try_from_entry(entry?, &self.0)?)
+            })
+    }
+}
+
 fn main() -> Result<(), BelmarshError> {
     let start = Instant::now();
-
-    let base_path: RepositoryPath = "../MHR.Web.Apps.PeopleFirst/src/app".try_into()?;
 
     lazy_static! {
         static ref IMPORT_REGEX: Regex = Regex::new(r"import\s*\{[^}]*\}\s*from\s*'(\.[^']+)';")
             .expect("Failed to compile regex");
     }
 
+    let repository: Repository = "../MHR.Web.Apps.PeopleFirst/src/app".try_into()?;
+
     let file_check_count = AtomicUsize::new(0);
-    let counts: Result<Vec<usize>, BelmarshError> = WalkDir::new(base_path.as_ref())
-        .into_iter()
-        .par_bridge()
-        .map(|entry| -> Result<usize, BelmarshError> {
+    let counts: Result<Vec<usize>, BelmarshError> = repository.files()
+        .map(|analyzed_file_result| -> Result<usize, BelmarshError> {
             file_check_count.fetch_add(1, Ordering::SeqCst);
-            let file_path: FilePath = match entry?.try_into() {
-                Ok(path) => path,
-                Err(_) => return Ok(0)
+
+            let analyzed_file = match analyzed_file_result {
+                Ok(file) => file,
+                Err(e) => match e {
+                    RepositoryFilesError::CannotAnalyzeFile(inner_e) => match inner_e {
+                        AnalyzedFileFromEntryError::FilePathError(_) => return Ok(0),
+                        _ => return Err(RepositoryFilesError::CannotAnalyzeFile(inner_e).into()),
+                    }
+                    _ => return Err(e.into()),
+                },
             };
 
             let mut count = 0;
-            let module: Module =
-                RepositoryChildPath::from_file_path(&file_path, &base_path)?.module()?;
+            let current_module = analyzed_file.module()?;
 
-            let reader = file_path.contents()?;
-            let parent_dir: FileParentPath = FileParentPath::from_file_path(&file_path);
-
-            for line in reader.lines() {
-                let line = line.map_err(|e| BelmarshError::Io(e, file_path.as_ref().to_path_buf()))?;
-
-                if let Some(captures) = IMPORT_REGEX.captures(&line) {
-                    if let Some(path_capture) = captures.get(1) {
-                        let import_path =
-                            match ImportPath::from_import_string(path_capture.as_str(), &parent_dir).map_err(|e| BelmarshError::ParseImportPath(e, file_path.clone())) {
-                                Ok(path) => path,
-                                Err(e) => {
-                                    eprintln!("{:?}", e);
-
-                                    continue;
-                                }
-                            };
-
-                        let imported_module =
-                            match RepositoryChildPath::from_import_path(&import_path, &base_path).map_err(|e| BelmarshError::InvalidImport(e, file_path.clone())) {
-                                Ok(repository_child_path) => repository_child_path.module()?,
-                                Err(e) => {
-                                    eprintln!("{:?}", e);
-
-                                    continue;
-                                }
-                            };
-
-                        if module != imported_module {
-                            count = count + 1;
-                        }
+            for import_path in analyzed_file.imports()? {
+                let imported_module = match RepositoryChildPath::from_import_path(
+                    import_path,
+                    &analyzed_file.base_path,
+                )
+                .map_err(|e| BelmarshError::InvalidImport(e, analyzed_file.file_path().clone()))
+                {
+                    Ok(repository_child_path) => repository_child_path.module()?,
+                    Err(e) => {
+                        eprintln!("{:?}", e);
+                        continue;
                     }
+                };
+
+                if current_module != &imported_module {
+                    count = count + 1;
                 }
             }
             Ok(count)
