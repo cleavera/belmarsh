@@ -21,7 +21,6 @@ pub enum BelmarshError {
     InvalidImport(RepositoryChildPathFromImportPathError, FilePath),
     Io(std::io::Error, PathBuf),
     Walkdir(walkdir::Error),
-    PathError(String),
     Regex(regex::Error),
     ParseImportPath(ImportPathFromImportStringError, FilePath),
     AnalyzedFileError(AnalyzedFileFromEntryError),
