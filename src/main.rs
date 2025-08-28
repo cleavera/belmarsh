@@ -9,6 +9,7 @@ use std::{
     time::Instant,
 };
 use walkdir::WalkDir;
+use once_cell::sync::OnceCell;
 
 #[derive(Debug)]
 pub enum BelmarshError {
@@ -108,11 +109,6 @@ impl From<RepositoryChildPathModuleError> for RepositoryFileFromEntryError {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct FilePath(PathBuf);
-
-use once_cell::sync::OnceCell;
-
 pub struct RepositoryFile {
     file_path: FilePath,
     base_path: RepositoryPath,
@@ -190,6 +186,9 @@ impl RepositoryFile {
             .map(|v| v.as_slice())
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct FilePath(PathBuf);
 
 #[derive(Debug)]
 pub enum FilePathContentsError {
