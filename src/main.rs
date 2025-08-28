@@ -23,7 +23,7 @@ pub enum BelmarshError {
     Walkdir(walkdir::Error),
     Regex(regex::Error),
     ParseImportPath(ImportPathFromImportStringError, FilePath),
-    AnalyzedFileError(AnalyzedFileFromEntryError),
+    RepositoryFileError(RepositoryFileFromEntryError),
 }
 
 impl From<RepositoryFilesError> for BelmarshError {
@@ -32,9 +32,9 @@ impl From<RepositoryFilesError> for BelmarshError {
     }
 }
 
-impl From<AnalyzedFileFromEntryError> for BelmarshError {
-    fn from(value: AnalyzedFileFromEntryError) -> Self {
-        BelmarshError::AnalyzedFileError(value)
+impl From<RepositoryFileFromEntryError> for BelmarshError {
+    fn from(value: RepositoryFileFromEntryError) -> Self {
+        BelmarshError::RepositoryFileError(value)
     }
 }
 
@@ -81,7 +81,7 @@ impl From<regex::Error> for BelmarshError {
 }
 
 #[derive(Debug)]
-pub enum AnalyzedFileFromEntryError {
+pub enum RepositoryFileFromEntryError {
     WalkdirError(walkdir::Error),
     FilePathError(FilePathFromEntryError),
     ModuleError(RepositoryChildPathModuleError),
@@ -90,21 +90,21 @@ pub enum AnalyzedFileFromEntryError {
     InvalidImport(RepositoryChildPathFromImportPathError, FilePath),
 }
 
-impl From<walkdir::Error> for AnalyzedFileFromEntryError {
+impl From<walkdir::Error> for RepositoryFileFromEntryError {
     fn from(value: walkdir::Error) -> Self {
-        AnalyzedFileFromEntryError::WalkdirError(value)
+        RepositoryFileFromEntryError::WalkdirError(value)
     }
 }
 
-impl From<FilePathFromEntryError> for AnalyzedFileFromEntryError {
+impl From<FilePathFromEntryError> for RepositoryFileFromEntryError {
     fn from(value: FilePathFromEntryError) -> Self {
-        AnalyzedFileFromEntryError::FilePathError(value)
+        RepositoryFileFromEntryError::FilePathError(value)
     }
 }
 
-impl From<RepositoryChildPathModuleError> for AnalyzedFileFromEntryError {
+impl From<RepositoryChildPathModuleError> for RepositoryFileFromEntryError {
     fn from(value: RepositoryChildPathModuleError) -> Self {
-        AnalyzedFileFromEntryError::ModuleError(value)
+        RepositoryFileFromEntryError::ModuleError(value)
     }
 }
 
@@ -113,7 +113,7 @@ pub struct FilePath(PathBuf);
 
 use once_cell::sync::OnceCell;
 
-pub struct AnalyzedFile {
+pub struct RepositoryFile {
     file_path: FilePath,
     base_path: RepositoryPath,
 
@@ -121,16 +121,16 @@ pub struct AnalyzedFile {
     imports: OnceCell<Vec<ImportPath>>,
 }
 
-impl AnalyzedFile {
+impl RepositoryFile {
     pub fn try_from_entry(
         entry: walkdir::DirEntry,
         base_path: &RepositoryPath,
-    ) -> Result<Self, AnalyzedFileFromEntryError> {
+    ) -> Result<Self, RepositoryFileFromEntryError> {
         let file_path: FilePath = entry
             .try_into()
-            .map_err(AnalyzedFileFromEntryError::FilePathError)?;
+            .map_err(RepositoryFileFromEntryError::FilePathError)?;
 
-        Ok(AnalyzedFile {
+        Ok(RepositoryFile {
             file_path,
             base_path: base_path.clone(),
             module: OnceCell::new(),
@@ -527,11 +527,11 @@ impl TryFrom<&str> for Repository {
 #[derive(Debug)]
 pub enum RepositoryFilesError {
     CannotScanFiles(walkdir::Error),
-    CannotAnalyzeFile(AnalyzedFileFromEntryError),
+    CannotAnalyzeFile(RepositoryFileFromEntryError),
 }
 
-impl From<AnalyzedFileFromEntryError> for RepositoryFilesError {
-    fn from(value: AnalyzedFileFromEntryError) -> Self {
+impl From<RepositoryFileFromEntryError> for RepositoryFilesError {
+    fn from(value: RepositoryFileFromEntryError) -> Self {
         RepositoryFilesError::CannotAnalyzeFile(value)
     }
 }
@@ -543,12 +543,12 @@ impl From<walkdir::Error> for RepositoryFilesError {
 }
 
 impl Repository {
-    pub fn files(&self) -> rayon::iter::Map<rayon::iter::IterBridge<walkdir::IntoIter>, impl Fn(Result<walkdir::DirEntry, walkdir::Error>) -> Result<AnalyzedFile, RepositoryFilesError>> {
+    pub fn files(&self) -> rayon::iter::Map<rayon::iter::IterBridge<walkdir::IntoIter>, impl Fn(Result<walkdir::DirEntry, walkdir::Error>) -> Result<RepositoryFile, RepositoryFilesError>> {
         WalkDir::new(self.0.as_ref())
             .into_iter()
             .par_bridge()
-            .map(|entry| -> Result<AnalyzedFile, RepositoryFilesError> {
-                Ok(AnalyzedFile::try_from_entry(entry?, &self.0)?)
+            .map(|entry| -> Result<RepositoryFile, RepositoryFilesError> {
+                Ok(RepositoryFile::try_from_entry(entry?, &self.0)?)
             })
     }
 }
@@ -572,7 +572,7 @@ fn main() -> Result<(), BelmarshError> {
                 Ok(file) => file,
                 Err(e) => match e {
                     RepositoryFilesError::CannotAnalyzeFile(inner_e) => match inner_e {
-                        AnalyzedFileFromEntryError::FilePathError(_) => return Ok(0),
+                        RepositoryFileFromEntryError::FilePathError(_) => return Ok(0),
                         _ => return Err(RepositoryFilesError::CannotAnalyzeFile(inner_e).into()),
                     }
                     _ => return Err(e.into()),
