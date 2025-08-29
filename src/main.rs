@@ -1,21 +1,15 @@
 use belmarsh::{
-    file_path::{FilePath, FilePathContentsError, FilePathFromEntryError},
-    import_path::ImportPathFromImportStringError,
+    file_path::FilePath,
     repository::{
         Repository,
         RepositoryFilesError,
         RepositoryFromStringError,
-        child::{
-            RepositoryChildPath,
-            RepositoryChildPathFromFilePathError, RepositoryChildPathFromImportPathError,
-            RepositoryChildPathModuleError,
-        },
-        file::{RepositoryFileFromEntryError, RepositoryFileModuleError, RepositoryFileResolveImportsError},
+        child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathModuleError},
+        file::{RepositoryFileModuleError, RepositoryFileResolveImportsError},
     },
 };
 use rayon::prelude::*;
 use std::{
-    path::PathBuf,
     sync::atomic::{AtomicUsize, Ordering},
     time::Instant,
 };
@@ -24,16 +18,8 @@ use std::{
 pub enum BelmarshError {
     CouldNotParseRepository(RepositoryFromStringError),
     CouldNotGetFiles(RepositoryFilesError),
-    CouldNotParseFilePath(FilePathFromEntryError),
-    CouldNotReadFile(FilePathContentsError),
-    InvalidFile(RepositoryChildPathFromFilePathError),
-    InvalidModule(RepositoryChildPathModuleError),
     InvalidImport(RepositoryChildPathFromImportPathError, FilePath),
-    Io(std::io::Error, PathBuf),
-    Walkdir(walkdir::Error),
-    Regex(regex::Error),
-    ParseImportPath(ImportPathFromImportStringError, FilePath),
-    CannotCreateRepositoryFile(RepositoryFileFromEntryError),
+    InvalidModule(RepositoryChildPathModuleError),
     CannotGetModuleForRepositoryFile(RepositoryFileModuleError),
     CannotResolveImports(RepositoryFileResolveImportsError),
 }
@@ -44,51 +30,9 @@ impl From<RepositoryFilesError> for BelmarshError {
     }
 }
 
-impl From<RepositoryFileFromEntryError> for BelmarshError {
-    fn from(value: RepositoryFileFromEntryError) -> Self {
-        BelmarshError::CannotCreateRepositoryFile(value)
-    }
-}
-
-impl From<RepositoryChildPathModuleError> for BelmarshError {
-    fn from(value: RepositoryChildPathModuleError) -> Self {
-        BelmarshError::InvalidModule(value)
-    }
-}
-
-impl From<RepositoryChildPathFromFilePathError> for BelmarshError {
-    fn from(value: RepositoryChildPathFromFilePathError) -> Self {
-        BelmarshError::InvalidFile(value)
-    }
-}
-
 impl From<RepositoryFromStringError> for BelmarshError {
     fn from(value: RepositoryFromStringError) -> Self {
         BelmarshError::CouldNotParseRepository(value)
-    }
-}
-
-impl From<FilePathFromEntryError> for BelmarshError {
-    fn from(value: FilePathFromEntryError) -> Self {
-        BelmarshError::CouldNotParseFilePath(value)
-    }
-}
-
-impl From<FilePathContentsError> for BelmarshError {
-    fn from(value: FilePathContentsError) -> Self {
-        BelmarshError::CouldNotReadFile(value)
-    }
-}
-
-impl From<walkdir::Error> for BelmarshError {
-    fn from(err: walkdir::Error) -> Self {
-        BelmarshError::Walkdir(err)
-    }
-}
-
-impl From<regex::Error> for BelmarshError {
-    fn from(err: regex::Error) -> Self {
-        BelmarshError::Regex(err)
     }
 }
 
@@ -101,6 +45,12 @@ impl From<RepositoryFileModuleError> for BelmarshError {
 impl From<RepositoryFileResolveImportsError> for BelmarshError {
     fn from(value: RepositoryFileResolveImportsError) -> Self {
         BelmarshError::CannotResolveImports(value)
+    }
+}
+
+impl From<RepositoryChildPathModuleError> for BelmarshError {
+    fn from(value: RepositoryChildPathModuleError) -> Self {
+        BelmarshError::InvalidModule(value)
     }
 }
 
