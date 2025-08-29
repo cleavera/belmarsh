@@ -55,6 +55,7 @@ impl From<FilePathContentsError> for RepositoryFileResolveImportsError {
     }
 }
 
+#[derive(Debug)]
 pub struct RepositoryFile {
     file_path: FilePath,
     base_path: RepositoryPath,

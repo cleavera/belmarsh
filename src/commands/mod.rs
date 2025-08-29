@@ -3,7 +3,7 @@ pub mod statistics;
 use clap::{Parser, Subcommand};
 use statistics::StatisticsCommand;
 
-#[derive(Parser)]
+#[derive(Parser, Debug)]
 #[command(name = "belmarsh")]
 #[command(about = "A tool for analyzing the inner module dependencies of a repository")]
 pub struct Cli {
@@ -11,7 +11,7 @@ pub struct Cli {
     pub command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 pub enum Commands {
     Statistics(StatisticsCommand),
 }

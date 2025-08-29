@@ -6,6 +6,7 @@ pub enum ImportPathFromImportStringError {
     CannotFindFile(String),
 }
 
+#[derive(Debug)]
 pub struct ImportPath(PathBuf);
 
 impl Into<PathBuf> for ImportPath {

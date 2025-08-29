@@ -25,6 +25,7 @@ impl From<walkdir::Error> for RepositoryFilesError {
     }
 }
 
+#[derive(Debug)]
 pub struct Repository(RepositoryPath);
 
 #[derive(Debug)]

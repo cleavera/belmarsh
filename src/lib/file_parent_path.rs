@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::file_path::FilePath;
 
+#[derive(Debug)]
 pub struct FileParentPath(PathBuf);
 
 impl FileParentPath {

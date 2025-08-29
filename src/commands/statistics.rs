@@ -14,7 +14,7 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-#[derive(Args)]
+#[derive(Args, Debug)]
 #[command(about = "Generate statistics")]
 pub struct StatisticsCommand {
     repository_path: String,

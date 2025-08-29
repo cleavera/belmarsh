@@ -57,6 +57,7 @@ pub enum RepositoryChildPathFromPathError {
     ImportOutsideRoot(String),
 }
 
+#[derive(Debug)]
 pub struct RepositoryChildPath(PathBuf);
 
 impl RepositoryChildPath {
