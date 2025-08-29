@@ -16,7 +16,9 @@ use std::{
 
 #[derive(Args)]
 #[command(about = "Generate statistics")]
-pub struct StatisticsCommand;
+pub struct StatisticsCommand {
+    repository_path: String,
+}
 
 #[derive(Debug)]
 pub enum StatisticsCommandError {
@@ -59,8 +61,8 @@ impl From<RepositoryChildPathModuleError> for StatisticsCommandError {
 }
 
 impl StatisticsCommand {
-    pub fn run(&self) -> Result<(), StatisticsCommandError> {
-        let repository: Repository = "../MHR.Web.Apps.PeopleFirst/src/app".try_into()?;
+    pub fn run(self) -> Result<(), StatisticsCommandError> {
+        let repository: Repository = self.repository_path.try_into()?;
 
         let file_check_count = AtomicUsize::new(0);
         let counts: Result<Vec<usize>, StatisticsCommandError> = repository

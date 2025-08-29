@@ -14,7 +14,7 @@ fn main() -> Result<(), BelmarshCliError> {
 
     let cli = Cli::parse();
 
-    match &cli.command {
+    match cli.command {
         Commands::Statistics(statistics) => {
             statistics.run().map_err(|e| BelmarshCliError::Statistics(e))?;
         }
