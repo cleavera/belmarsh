@@ -1,17 +1,12 @@
 use belmarsh::{
-    file_path::FilePath,
-    repository::{
-        Repository,
-        RepositoryFilesError,
-        RepositoryFromStringError,
-        child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathModuleError},
-        file::{RepositoryFileModuleError, RepositoryFileResolveImportsError},
-    },
+    depenendency::Dependency, file_path::FilePath, repository::{
+        child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathModuleError}, file::{RepositoryFileModuleError, RepositoryFileResolveImportsError}, Repository, RepositoryFilesError, RepositoryFromStringError
+    }
 };
 use clap::{Args, command};
 use rayon::prelude::*;
 use std::{
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering}
 };
 
 #[derive(Args, Debug)]
@@ -94,7 +89,9 @@ impl StatisticsCommand {
                             }
                         };
 
-                    if current_module != &imported_module {
+                    let dependency = Dependency::create(current_module, &imported_module);
+
+                    if !dependency.is_internal() {
                         count = count + 1;
                     }
                 }

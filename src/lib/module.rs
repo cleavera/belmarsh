@@ -15,7 +15,7 @@ fn component_to_string(component: Component) -> String {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Module(String);
 
 impl<'a> TryFrom<Component<'a>> for Module {
@@ -34,5 +34,11 @@ impl<'a> TryFrom<Component<'a>> for Module {
 impl From<String> for Module {
     fn from(value: String) -> Self {
         Module(value)
+    }
+}
+
+impl AsRef<str> for Module {
+    fn as_ref(&self) -> &str {
+        &self.0
     }
 }
