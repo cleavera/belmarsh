@@ -6,8 +6,10 @@ use crate::{
 };
 
 use std::{
-    path::{Path, PathBuf},
+    fmt::Display, path::{Path, PathBuf}
 };
+
+use super::file::RepositoryFile;
 
 #[derive(Debug)]
 pub enum RepositoryChildPathModuleError {
@@ -58,6 +60,17 @@ pub enum RepositoryChildPathFromPathError {
 }
 
 #[derive(Debug)]
+pub enum RepositoryChildPathFromRepositoryFileError {
+    File(RepositoryChildPathFromImportPathError),
+}
+
+impl From<RepositoryChildPathFromImportPathError> for RepositoryChildPathFromRepositoryFileError {
+    fn from(value: RepositoryChildPathFromImportPathError) -> Self {
+        RepositoryChildPathFromRepositoryFileError::File(value)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct RepositoryChildPath(PathBuf);
 
 impl RepositoryChildPath {
@@ -69,6 +82,10 @@ impl RepositoryChildPath {
             import_path.as_ref(),
             repository_path.as_ref(),
         )?)
+    }
+
+    pub fn from_repository_file(repository_file: &RepositoryFile) -> Result<RepositoryChildPath, RepositoryChildPathFromRepositoryFileError> {
+        Ok(RepositoryChildPath::from_file_path(repository_file.file_path(), repository_file.as_ref())?)
     }
 
     pub fn from_file_path(
@@ -101,4 +118,10 @@ impl RepositoryChildPath {
 
         Ok(Module::try_from(component)?)
     }
+}
+
+impl Display for RepositoryChildPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())  
+    }                                                                                                                                
 }
