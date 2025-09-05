@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::{
     fs::File,
@@ -19,6 +20,12 @@ impl FilePath {
 
         Ok(BufReader::new(file))
     }
+}
+
+impl Display for FilePath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())  
+    }                                                                                                                                
 }
 
 #[derive(Debug)]

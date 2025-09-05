@@ -1,23 +1,27 @@
+use std::fmt::Display;
+
+pub mod list;
+
 #[derive(Debug)]
-pub struct Dependency<TFrom: AsRef<str>, TTo: AsRef<str>> {
+pub struct Dependency<TFrom: Display, TTo: Display> {
     from: TFrom,
     to: TTo,
 }
 
-impl<TFrom: AsRef<str>, TTo: AsRef<str>> PartialEq for Dependency<TFrom, TTo> {
+impl<TFrom: Display, TTo: Display> PartialEq for Dependency<TFrom, TTo> {
     fn eq(&self, other: &Self) -> bool {
-        self.from.as_ref() == other.from.as_ref() && self.to.as_ref() == other.to.as_ref()
+        self.from.to_string() == other.from.to_string() && self.to.to_string() == other.to.to_string()
     }
 }
 
-impl<TFrom: AsRef<str>, TTo: AsRef<str>> Dependency<TFrom, TTo> {
+impl<TFrom: Display, TTo: Display> Dependency<TFrom, TTo> {
     pub fn create(from: TFrom, to: TTo) -> Dependency<TFrom, TTo> {
         Dependency { from, to }
     }
 }
 
-impl<TType: AsRef<str>> Dependency<TType, TType> {
+impl<TType: Display> Dependency<TType, TType> {
     pub fn is_internal(&self) -> bool {
-       self.from.as_ref() == self.to.as_ref()
+       self.from.to_string() == self.to.to_string()
     }
 }

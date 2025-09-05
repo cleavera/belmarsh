@@ -1,4 +1,4 @@
-use belmarsh::{depenendency:: Dependency, file_path::FilePath, module::Module, repository::{child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathModuleError}, file::{RepositoryFileModuleError, RepositoryFileResolveImportsError}, Repository, RepositoryFilesError, RepositoryFromStringError}};
+use belmarsh::{depenendency:: Dependency, file_path::FilePath, module::Module, repository::{child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathFromPathError, RepositoryChildPathModuleError}, file::{RepositoryFileModuleError, RepositoryFileResolveImportsError}, Repository, RepositoryFilesError, RepositoryFromStringError}};
 use clap::{Args, command};
 use rayon::prelude::*;
 
@@ -14,7 +14,8 @@ pub enum ValidateCommandError {
     CouldNotAnalyzeFile(RepositoryFilesError),
     CannotGetModuleForRepositoryFile(RepositoryFileModuleError),
     InvalidModule(RepositoryChildPathModuleError),
-    InvalidImport(RepositoryChildPathFromImportPathError, FilePath),
+    InvalidImport(RepositoryChildPathFromImportPathError),
+    InvalidImports(Vec<ValidateCommandError>, FilePath),
     CannotResolveImports(RepositoryFileResolveImportsError),
 }
 
@@ -65,33 +66,34 @@ impl ValidateCommand {
 
                 let current_module = analyzed_file.module()?;
 
-                analyzed_file
+                let (dependencies, errors): (Vec<Result<Dependency<Module, Module>, ValidateCommandError>>, Vec<Result<Dependency<Module, Module>, ValidateCommandError>>) = analyzed_file
                     .imports()?
                     .into_iter()
                     .map(|import_path| {
-                        let imported_module = RepositoryChildPath::from_import_path(
+                        RepositoryChildPath::from_import_path(
                             import_path,
                             &analyzed_file,
                         )
-                        .map_err(|e| {
-                            ValidateCommandError::InvalidImport(
-                                e,
-                                analyzed_file.file_path().clone(),
-                            )
-                        })?
-                        .module()?;
-
-                        Ok(Dependency::create(
-                            current_module.clone(),
-                            imported_module.clone(),
-                        ))
+                        .map_err(|e| ValidateCommandError::InvalidImport(e))
+                        .and_then(|repository_child| repository_child.module().map_err(|e| ValidateCommandError::InvalidModule(e)))
+                        .map(|imported_module| Dependency::create(current_module.clone(), imported_module))
                     })
                     .filter(|dependency_result| {
-                        dependency_result
-                            .as_ref()
-                            .map_or(true, |d| !d.is_internal())
+                        match dependency_result {
+                            Ok(depenendency) => !depenendency.is_internal(),
+                            Err(ValidateCommandError::InvalidImport(RepositoryChildPathFromImportPathError::Path(e))) => match e {
+                                RepositoryChildPathFromPathError::ImportOutsideRoot(_) => false,
+                            },
+                            Err(_) => true
+                        }
                     })
-                    .collect::<Result<Vec<_>, _>>()
+                    .partition(|result| result.is_ok());
+
+                if !errors.is_empty() {
+                    return Err(ValidateCommandError::InvalidImports(errors.into_iter().map(|r| r.unwrap_err()).collect(), analyzed_file.file_path().clone()));
+                }
+
+                Ok(dependencies.into_iter().map(|r| r.unwrap()).collect())
             })
             .collect::<Result<Vec<Vec<_>>, _>>()
             .map(|vecs| vecs.into_iter().flatten().collect::<Vec<_>>())?;

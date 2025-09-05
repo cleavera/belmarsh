@@ -1,4 +1,4 @@
-use std::path::Component;
+use std::{fmt::Display, path::Component};
 
 #[derive(Debug)]
 pub enum ModuleFromComponentError {
@@ -17,6 +17,12 @@ fn component_to_string(component: Component) -> String {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Module(String);
+
+impl Display for Module {                                                                                                                           
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {                                                                              
+        write!(f, "{}", self.0)
+    }
+}
 
 impl<'a> TryFrom<Component<'a>> for Module {
     type Error = ModuleFromComponentError;
