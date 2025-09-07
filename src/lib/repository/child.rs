@@ -62,6 +62,13 @@ pub enum RepositoryChildPathFromPathError {
 #[derive(Debug)]
 pub enum RepositoryChildPathFromRepositoryFileError {
     File(RepositoryChildPathFromImportPathError),
+    FilePath(RepositoryChildPathFromFilePathError),
+}
+
+impl From<RepositoryChildPathFromFilePathError> for RepositoryChildPathFromRepositoryFileError {
+    fn from(value: RepositoryChildPathFromFilePathError) -> Self {
+        RepositoryChildPathFromRepositoryFileError::FilePath(value)
+    }
 }
 
 impl From<RepositoryChildPathFromImportPathError> for RepositoryChildPathFromRepositoryFileError {
