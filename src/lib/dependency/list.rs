@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::hash::Hash;
 
 use crate::{
-    dependency::Dependency,
+    dependency::{Dependency, chain::DependencyChain},
     module::Module,
     repository::{
         Repository, RepositoryFilesError,
@@ -46,6 +46,84 @@ impl<TFrom: Display, TTo: Display> DependencyList<TFrom, TTo> {
             map.entry(&dep.from).or_default().push(&dep.to);
         }
         map
+    }
+}
+
+impl<TDependencyType: Display + Eq + Hash + Clone> DependencyList<TDependencyType, TDependencyType> {
+    pub fn to_dependency_chain_list(&self) -> HashSet<DependencyChain<TDependencyType>> {
+        let grouped_deps = self.group_by_from();
+        let mut all_chains: HashSet<DependencyChain<TDependencyType>> = HashSet::new();
+        let mut visited_starts: HashSet<&TDependencyType> = HashSet::new();
+
+        for dep in self.0.iter() {
+            let start_node = &dep.from;
+            if visited_starts.contains(start_node) {
+                continue;
+            }
+            visited_starts.insert(start_node);
+
+            let mut current_path: Vec<TDependencyType> = Vec::new();
+            let mut visited_in_dfs: HashSet<&TDependencyType> = HashSet::new();
+
+            Self::dfs(
+                start_node,
+                &mut current_path,
+                &mut visited_in_dfs,
+                &mut all_chains,
+                &grouped_deps,
+            );
+        }
+        all_chains
+    }
+
+    fn dfs<'a>(
+        current_node: &'a TDependencyType,
+        current_path: &mut Vec<TDependencyType>,
+        visited_in_dfs: &mut HashSet<&'a TDependencyType>,
+        all_chains: &mut HashSet<DependencyChain<TDependencyType>>,
+        grouped_deps: &HashMap<&'a TDependencyType, Vec<&'a TDependencyType>>,
+    )
+    where
+        TDependencyType: Display + Eq + Hash + Clone,
+    {
+        // Add current_node to the path
+        current_path.push(current_node.clone());
+
+        // Check for circular dependency
+        if visited_in_dfs.contains(current_node) {
+            all_chains.insert(DependencyChain::new(current_path.clone(), true, false));
+            current_path.pop(); // Backtrack
+            return;
+        }
+
+        visited_in_dfs.insert(current_node);
+
+        let next_nodes = grouped_deps.get(current_node);
+
+        if let Some(nodes) = next_nodes {
+            for next_node in nodes.iter() {
+                if current_path.contains(next_node) {
+                    // Circular dependency
+                    all_chains.insert(DependencyChain::new(current_path.clone(), true, false));
+                } else if visited_in_dfs.contains(next_node) {
+                    // Internal loop
+                    all_chains.insert(DependencyChain::new(current_path.clone(), false, true));
+                } else {
+                    // Normal traversal
+                    Self::dfs(
+                        next_node,
+                        current_path,
+                        visited_in_dfs,
+                        all_chains,
+                        grouped_deps,
+                    );
+                }
+            }
+        }
+
+        // Backtrack
+        current_path.pop();
+        visited_in_dfs.remove(current_node);
     }
 }
 

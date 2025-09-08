@@ -3,6 +3,7 @@ use std::hash::{Hash, Hasher};
 
 use crate::module::Module;
 
+pub mod chain;
 pub mod list;
 
 #[derive(Debug)]
