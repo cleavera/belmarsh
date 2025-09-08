@@ -33,8 +33,9 @@ impl ValidateCommand {
     pub fn run(self) -> Result<(), ValidateCommandError> {
         let repository: Repository = self.repository_path.try_into()?;
         let dependencies: DependencyList<Module, Module> = repository.try_into()?;
+        let grouped_dependencies = dependencies.group_by_from();
 
-        println!("{:?}", dependencies);
+        println!("{:?}", grouped_dependencies);
 
         Ok(())
     }

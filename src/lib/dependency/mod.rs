@@ -7,8 +7,8 @@ pub mod list;
 
 #[derive(Debug)]
 pub struct Dependency<TFrom: Display, TTo: Display> {
-    from: TFrom,
-    to: TTo,
+    pub(in crate::dependency) from: TFrom,
+    pub(in crate::dependency) to: TTo,
 }
 
 impl<TFrom: Display, TTo: Display> PartialEq for Dependency<TFrom, TTo> {

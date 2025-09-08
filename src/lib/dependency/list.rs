@@ -1,6 +1,7 @@
 use rayon::{iter::Either, prelude::*};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Display;
+use std::hash::Hash;
 
 use crate::{
     dependency::Dependency,
@@ -32,6 +33,19 @@ impl<TFrom: Display, TTo: Display> AsRef<HashSet<Dependency<TFrom, TTo>>>
 {
     fn as_ref(&self) -> &HashSet<Dependency<TFrom, TTo>> {
         &self.0
+    }
+}
+
+impl<TFrom: Display, TTo: Display> DependencyList<TFrom, TTo> {
+    pub fn group_by_from(&self) -> HashMap<&TFrom, Vec<&TTo>>
+    where
+        TFrom: Eq + Hash,
+    {
+        let mut map: HashMap<&TFrom, Vec<&TTo>> = HashMap::new();
+        for dep in self.0.iter() {
+            map.entry(&dep.from).or_default().push(&dep.to);
+        }
+        map
     }
 }
 
