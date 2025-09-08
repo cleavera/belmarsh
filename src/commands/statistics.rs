@@ -1,5 +1,5 @@
 use belmarsh::{
-    depenendency::Dependency, file_path::FilePath, repository::{
+    dependency::Dependency, file_path::FilePath, repository::{
         child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathModuleError}, file::{RepositoryFileModuleError, RepositoryFileResolveImportsError}, Repository, RepositoryFilesError, RepositoryFromStringError
     }
 };

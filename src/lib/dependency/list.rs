@@ -2,7 +2,7 @@ use rayon::{iter::Either, prelude::*};
 use std::fmt::Display;
 
 use crate::{
-    depenendency::Dependency,
+    dependency::Dependency,
     module::Module,
     repository::{
         child::{
@@ -82,7 +82,7 @@ impl TryFrom<RepositoryFile> for DependencyList<RepositoryChildPath, RepositoryC
                 },
             )
             .filter(|dependency_result| match dependency_result {
-                Ok(depenendency) => !depenendency.is_internal(),
+                Ok(dependency) => !dependency.is_internal(),
                 Err(RepositoryChildPathFromImportPathError::Path(e)) => match e {
                     RepositoryChildPathFromPathError::ImportOutsideRoot(_) => false,
                 },
