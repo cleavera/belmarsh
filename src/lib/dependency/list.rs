@@ -1,4 +1,5 @@
 use rayon::{iter::Either, prelude::*};
+use std::collections::HashSet;
 use std::fmt::Display;
 
 use crate::{
@@ -16,20 +17,20 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct DependencyList<TFrom: Display, TTo: Display>(Vec<Dependency<TFrom, TTo>>);
+pub struct DependencyList<TFrom: Display, TTo: Display>(HashSet<Dependency<TFrom, TTo>>);
 
-impl<TFrom: Display, TTo: Display> From<Vec<Dependency<TFrom, TTo>>>
+impl<TFrom: Display, TTo: Display> From<HashSet<Dependency<TFrom, TTo>>>
     for DependencyList<TFrom, TTo>
 {
-    fn from(value: Vec<Dependency<TFrom, TTo>>) -> Self {
+    fn from(value: HashSet<Dependency<TFrom, TTo>>) -> Self {
         DependencyList(value)
     }
 }
 
-impl<TFrom: Display, TTo: Display> AsRef<Vec<Dependency<TFrom, TTo>>>
+impl<TFrom: Display, TTo: Display> AsRef<HashSet<Dependency<TFrom, TTo>>>
     for DependencyList<TFrom, TTo>
 {
-    fn as_ref(&self) -> &Vec<Dependency<TFrom, TTo>> {
+    fn as_ref(&self) -> &HashSet<Dependency<TFrom, TTo>> {
         &self.0
     }
 }
@@ -104,7 +105,7 @@ impl TryFrom<RepositoryFile> for DependencyList<RepositoryChildPath, RepositoryC
         Ok(dependencies
             .into_iter()
             .map(|r| r.unwrap())
-            .collect::<Vec<Dependency<RepositoryChildPath, RepositoryChildPath>>>()
+            .collect::<HashSet<Dependency<RepositoryChildPath, RepositoryChildPath>>>()
             .into())
     }
 }
@@ -219,7 +220,7 @@ impl TryFrom<Repository> for DependencyList<Module, Module> {
         Ok(dependencies
             .into_iter()
             .flatten()
-            .collect::<Vec<Dependency<Module, Module>>>()
+            .collect::<HashSet<Dependency<Module, Module>>>()
             .into())
     }
 }

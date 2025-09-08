@@ -1,4 +1,5 @@
 use std::fmt::Display;
+use std::hash::{Hash, Hasher};
 
 use crate::module::Module;
 
@@ -20,6 +21,15 @@ impl<TFrom: Display, TTo: Display> PartialEq for Dependency<TFrom, TTo> {
 impl<TFrom: Display, TTo: Display> Dependency<TFrom, TTo> {
     pub fn create(from: TFrom, to: TTo) -> Dependency<TFrom, TTo> {
         Dependency { from, to }
+    }
+}
+
+impl<TFrom: Display, TTo: Display> Eq for Dependency<TFrom, TTo> {}
+
+impl<TFrom: Display, TTo: Display> Hash for Dependency<TFrom, TTo> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.from.to_string().hash(state);
+        self.to.to_string().hash(state);
     }
 }
 
