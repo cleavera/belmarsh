@@ -18,8 +18,8 @@ fn component_to_string(component: Component) -> String {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Module(String);
 
-impl Display for Module {                                                                                                                           
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {                                                                              
+impl Display for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
     }
 }

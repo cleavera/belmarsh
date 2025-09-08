@@ -5,9 +5,13 @@ use crate::{
     dependency::Dependency,
     module::Module,
     repository::{
+        Repository, RepositoryFilesError,
         child::{
-            RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathFromPathError, RepositoryChildPathFromRepositoryFileError, RepositoryChildPathModuleError
-        }, file::{RepositoryFile, RepositoryFileModuleError, RepositoryFileResolveImportsError}, Repository, RepositoryFilesError
+            RepositoryChildPath, RepositoryChildPathFromImportPathError,
+            RepositoryChildPathFromPathError, RepositoryChildPathFromRepositoryFileError,
+            RepositoryChildPathModuleError,
+        },
+        file::{RepositoryFile, RepositoryFileModuleError, RepositoryFileResolveImportsError},
     },
 };
 
@@ -77,12 +81,14 @@ impl TryFrom<RepositoryFile> for DependencyList<RepositoryChildPath, RepositoryC
                     RepositoryChildPathFromImportPathError,
                 > {
                     RepositoryChildPath::from_import_path(import_path, &analyzed_file).map(
-                        |imported_file| Dependency::create(repository_child_path.clone(), imported_file),
+                        |imported_file| {
+                            Dependency::create(repository_child_path.clone(), imported_file)
+                        },
                     )
                 },
             )
             .filter(|dependency_result| match dependency_result {
-                Ok(dependency) => !dependency.is_internal(),
+                Ok(_) => true,
                 Err(RepositoryChildPathFromImportPathError::Path(e)) => match e {
                     RepositoryChildPathFromPathError::ImportOutsideRoot(_) => false,
                 },
@@ -171,22 +177,34 @@ impl TryFrom<Repository> for DependencyList<Module, Module> {
                     dependencies
                         .as_ref()
                         .iter()
-                        .map(|d| -> Result<Dependency<Module, Module>, DependencyListFromRepositoryAnalyzeFileError> {
-                            let (from_result, to_result) = (d.from.module(), d.to.module());
+                        .map(
+                            |d| -> Result<
+                                Dependency<Module, Module>,
+                                DependencyListFromRepositoryAnalyzeFileError,
+                            > {
+                                let (from_result, to_result) = (d.from.module(), d.to.module());
 
-                            let from = match from_result {
-                                Ok(from_module) => from_module,
-                                Err(e) => return Err(e.into()),
-                            };
+                                let from = match from_result {
+                                    Ok(from_module) => from_module,
+                                    Err(e) => return Err(e.into()),
+                                };
 
-                            let to = match to_result {
-                                Ok(to_module) => to_module,
-                                Err(e) => return Err(e.into()),
-                            };
+                                let to = match to_result {
+                                    Ok(to_module) => to_module,
+                                    Err(e) => return Err(e.into()),
+                                };
 
-                            Ok(Dependency::create(from, to))
+                                Ok(Dependency::create(from, to))
+                            },
+                        )
+                        .filter(|dependency_result| match dependency_result {
+                            Ok(dependency) => !dependency.is_internal(),
+                            Err(_) => true,
                         })
-                        .collect::<Result<Vec<Dependency<Module, Module>>, DependencyListFromRepositoryAnalyzeFileError>>()
+                        .collect::<Result<
+                            Vec<Dependency<Module, Module>>,
+                            DependencyListFromRepositoryAnalyzeFileError,
+                        >>()
                 },
             )
             .partition_map(|result| match result {
@@ -195,9 +213,7 @@ impl TryFrom<Repository> for DependencyList<Module, Module> {
             });
 
         if !errors.is_empty() {
-            return Err(DependencyListFromRepositoryError::InvalidFiles(
-                errors
-            ));
+            return Err(DependencyListFromRepositoryError::InvalidFiles(errors));
         }
 
         Ok(dependencies

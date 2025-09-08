@@ -2,11 +2,12 @@ use crate::{
     file_path::FilePath,
     import_path::ImportPath,
     module::{Module, ModuleFromComponentError},
-    repository::{path::{RepositoryPath}}
+    repository::path::RepositoryPath,
 };
 
 use std::{
-    fmt::Display, path::{Path, PathBuf}
+    fmt::Display,
+    path::{Path, PathBuf},
 };
 
 use super::file::RepositoryFile;
@@ -91,8 +92,13 @@ impl RepositoryChildPath {
         )?)
     }
 
-    pub fn from_repository_file(repository_file: &RepositoryFile) -> Result<RepositoryChildPath, RepositoryChildPathFromRepositoryFileError> {
-        Ok(RepositoryChildPath::from_file_path(repository_file.file_path(), repository_file.as_ref())?)
+    pub fn from_repository_file(
+        repository_file: &RepositoryFile,
+    ) -> Result<RepositoryChildPath, RepositoryChildPathFromRepositoryFileError> {
+        Ok(RepositoryChildPath::from_file_path(
+            repository_file.file_path(),
+            repository_file.as_ref(),
+        )?)
     }
 
     pub fn from_file_path(
@@ -129,6 +135,6 @@ impl RepositoryChildPath {
 
 impl Display for RepositoryChildPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())  
-    }                                                                                                                                
+        write!(f, "{}", self.0.display())
+    }
 }

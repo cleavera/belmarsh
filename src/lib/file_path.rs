@@ -1,9 +1,6 @@
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::{
-    fs::File,
-    io::BufReader
-};
+use std::{fs::File, io::BufReader};
 
 #[derive(Clone, Debug)]
 pub struct FilePath(PathBuf);
@@ -24,8 +21,8 @@ impl FilePath {
 
 impl Display for FilePath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())  
-    }                                                                                                                                
+        write!(f, "{}", self.0.display())
+    }
 }
 
 #[derive(Debug)]

@@ -1,4 +1,8 @@
-use belmarsh::{dependency::list::{DependencyList, DependencyListFromRepositoryError}, module::Module, repository::{Repository, RepositoryFromStringError}};
+use belmarsh::{
+    dependency::list::{DependencyList, DependencyListFromRepositoryError},
+    module::Module,
+    repository::{Repository, RepositoryFromStringError},
+};
 use clap::{Args, command};
 
 #[derive(Args, Debug)]

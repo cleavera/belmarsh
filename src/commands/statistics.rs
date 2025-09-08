@@ -1,13 +1,18 @@
 use belmarsh::{
-    dependency::Dependency, file_path::FilePath, repository::{
-        child::{RepositoryChildPath, RepositoryChildPathFromImportPathError, RepositoryChildPathModuleError}, file::{RepositoryFileModuleError, RepositoryFileResolveImportsError}, Repository, RepositoryFilesError, RepositoryFromStringError
-    }
+    dependency::Dependency,
+    file_path::FilePath,
+    repository::{
+        Repository, RepositoryFilesError, RepositoryFromStringError,
+        child::{
+            RepositoryChildPath, RepositoryChildPathFromImportPathError,
+            RepositoryChildPathModuleError,
+        },
+        file::{RepositoryFileModuleError, RepositoryFileResolveImportsError},
+    },
 };
 use clap::{Args, command};
 use rayon::prelude::*;
-use std::{
-    sync::atomic::{AtomicUsize, Ordering}
-};
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Args, Debug)]
 #[command(about = "Generate statistics")]
@@ -62,26 +67,32 @@ impl StatisticsCommand {
         let file_check_count = AtomicUsize::new(0);
         let counts: Result<Vec<usize>, StatisticsCommandError> = repository
             .files()
-            .map(|analyzed_file_result| -> Result<usize, StatisticsCommandError> {
-                file_check_count.fetch_add(1, Ordering::SeqCst);
+            .map(
+                |analyzed_file_result| -> Result<usize, StatisticsCommandError> {
+                    file_check_count.fetch_add(1, Ordering::SeqCst);
 
-                let analyzed_file = match analyzed_file_result {
-                    Ok(file) => file,
-                    Err(e) => match e {
-                        RepositoryFilesError::CannotAnalyzeFile(_) => return Ok(0),
-                        _ => return Err(e.into()),
-                    },
-                };
+                    let analyzed_file = match analyzed_file_result {
+                        Ok(file) => file,
+                        Err(e) => match e {
+                            RepositoryFilesError::CannotAnalyzeFile(_) => return Ok(0),
+                            _ => return Err(e.into()),
+                        },
+                    };
 
-                let mut count = 0;
-                let current_module = analyzed_file.module()?;
+                    let mut count = 0;
+                    let current_module = analyzed_file.module()?;
 
-                for import_path in analyzed_file.imports()? {
-                    let imported_module =
-                        match RepositoryChildPath::from_import_path(import_path, &analyzed_file)
-                            .map_err(|e| {
-                                StatisticsCommandError::InvalidImport(e, analyzed_file.file_path().clone())
-                            }) {
+                    for import_path in analyzed_file.imports()? {
+                        let imported_module = match RepositoryChildPath::from_import_path(
+                            import_path,
+                            &analyzed_file,
+                        )
+                        .map_err(|e| {
+                            StatisticsCommandError::InvalidImport(
+                                e,
+                                analyzed_file.file_path().clone(),
+                            )
+                        }) {
                             Ok(repository_child_path) => repository_child_path.module()?,
                             Err(e) => {
                                 eprintln!("{:?}", e);
@@ -89,14 +100,15 @@ impl StatisticsCommand {
                             }
                         };
 
-                    let dependency = Dependency::create(current_module, &imported_module);
+                        let dependency = Dependency::create(current_module, &imported_module);
 
-                    if !dependency.is_internal() {
-                        count = count + 1;
+                        if !dependency.is_internal() {
+                            count = count + 1;
+                        }
                     }
-                }
-                Ok(count)
-            })
+                    Ok(count)
+                },
+            )
             .collect();
 
         let total_count = counts?.into_iter().sum::<usize>();

@@ -1,8 +1,8 @@
 mod commands;
 
-use std::time::Instant;
 use clap::Parser;
 use commands::{Cli, Commands, statistics::StatisticsCommandError};
+use std::time::Instant;
 
 use crate::commands::validate::ValidateCommandError;
 
@@ -19,8 +19,10 @@ fn main() -> Result<(), BelmarshCliError> {
 
     match cli.command {
         Commands::Statistics(statistics) => {
-            statistics.run().map_err(|e| BelmarshCliError::Statistics(e))?;
-        },
+            statistics
+                .run()
+                .map_err(|e| BelmarshCliError::Statistics(e))?;
+        }
         Commands::Validate(validate) => {
             validate.run().map_err(|e| BelmarshCliError::Validate(e))?
         }

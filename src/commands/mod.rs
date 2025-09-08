@@ -19,4 +19,3 @@ pub enum Commands {
     Statistics(StatisticsCommand),
     Validate(ValidateCommand),
 }
-
