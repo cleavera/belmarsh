@@ -62,13 +62,15 @@ impl<TDependencyType: Display + Eq + Hash + Clone> DependencyList<TDependencyTyp
             }
             visited_starts.insert(start_node);
 
-            let mut current_path: Vec<TDependencyType> = Vec::new();
-            let mut visited_in_dfs: HashSet<&TDependencyType> = HashSet::new();
+            let mut path_stack: Vec<TDependencyType> = Vec::new();
+            let mut visited_nodes: HashSet<&TDependencyType> = HashSet::new();
+            let mut recursion_stack: HashSet<&TDependencyType> = HashSet::new();
 
             Self::dfs(
                 start_node,
-                &mut current_path,
-                &mut visited_in_dfs,
+                &mut path_stack,
+                &mut visited_nodes,
+                &mut recursion_stack,
                 &mut all_chains,
                 &grouped_deps,
             );
@@ -78,42 +80,45 @@ impl<TDependencyType: Display + Eq + Hash + Clone> DependencyList<TDependencyTyp
 
     fn dfs<'a>(
         current_node: &'a TDependencyType,
-        current_path: &mut Vec<TDependencyType>,
-        visited_in_dfs: &mut HashSet<&'a TDependencyType>,
+        path_stack: &mut Vec<TDependencyType>,
+        visited_nodes: &mut HashSet<&'a TDependencyType>,
+        recursion_stack: &mut HashSet<&'a TDependencyType>,
         all_chains: &mut HashSet<DependencyChain<TDependencyType>>,
         grouped_deps: &HashMap<&'a TDependencyType, Vec<&'a TDependencyType>>,
     )
     where
         TDependencyType: Display + Eq + Hash + Clone,
     {
-        // Add current_node to the path
-        current_path.push(current_node.clone());
-
-        // Check for circular dependency
-        if visited_in_dfs.contains(current_node) {
-            all_chains.insert(DependencyChain::new(current_path.clone(), true, false));
-            current_path.pop(); // Backtrack
-            return;
-        }
-
-        visited_in_dfs.insert(current_node);
+        // Mark current_node as visiting (add to recursion stack)
+        recursion_stack.insert(current_node);
+        path_stack.push(current_node.clone());
+        visited_nodes.insert(current_node);
 
         let next_nodes = grouped_deps.get(current_node);
 
+        let mut has_outgoing_dependencies = false;
+
         if let Some(nodes) = next_nodes {
             for next_node in nodes.iter() {
-                if current_path.contains(next_node) {
-                    // Circular dependency
-                    all_chains.insert(DependencyChain::new(current_path.clone(), true, false));
-                } else if visited_in_dfs.contains(next_node) {
-                    // Internal loop
-                    all_chains.insert(DependencyChain::new(current_path.clone(), false, true));
+                has_outgoing_dependencies = true;
+
+                if recursion_stack.contains(next_node) {
+                    // Circular dependency: next_node is in the current recursion stack
+                    let mut circular_chain_path = path_stack.clone();
+                    circular_chain_path.push((*next_node).clone()); // Add the node that closes the cycle
+                    all_chains.insert(DependencyChain::new(circular_chain_path, true, false));
+                } else if visited_nodes.contains(next_node) {
+                    // Internal loop: next_node has been visited in this DFS run, but not in current recursion stack
+                    let mut looped_chain_path = path_stack.clone();
+                    looped_chain_path.push((*next_node).clone());
+                    all_chains.insert(DependencyChain::new(looped_chain_path, false, true));
                 } else {
                     // Normal traversal
                     Self::dfs(
                         next_node,
-                        current_path,
-                        visited_in_dfs,
+                        path_stack,
+                        visited_nodes,
+                        recursion_stack,
                         all_chains,
                         grouped_deps,
                     );
@@ -121,9 +126,14 @@ impl<TDependencyType: Display + Eq + Hash + Clone> DependencyList<TDependencyTyp
             }
         }
 
-        // Backtrack
-        current_path.pop();
-        visited_in_dfs.remove(current_node);
+        // If no outgoing dependencies, this path ends here
+        if !has_outgoing_dependencies {
+            all_chains.insert(DependencyChain::new(path_stack.clone(), false, false));
+        }
+
+        // Backtrack: Remove current_node from recursion stack and path
+        recursion_stack.remove(current_node);
+        path_stack.pop();
     }
 }
 
