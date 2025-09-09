@@ -46,6 +46,12 @@ impl<TDependency: Display + Clone> PartialEq for DependencyChain<TDependency> {
     }
 }
 
+impl<TDependency: Display> Display for DependencyChain<TDependency> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.iter().map(|d| d.to_string()).collect::<Vec<String>>().join(" > "))
+    }
+}
+
 impl<TDependency: Display + Clone> Eq for DependencyChain<TDependency> {}
 
 impl<TDependency: Clone + Display> DependencyChain<TDependency> {

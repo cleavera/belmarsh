@@ -37,7 +37,11 @@ impl ValidateCommand {
         let dependencies: DependencyList<Module, Module> = repository.try_into()?;
         let chains = dependencies.to_dependency_chain_list().into_iter().filter(|chain| chain.is_circular()).collect::<HashSet<DependencyChain<Module>>>();
 
-        println!("{:?} \n \n Count: {:?}", chains, chains.len());
+        for chain in chains.iter() {
+            println!("Circular dependency: {}", chain); 
+        }
+
+        println!("\n\nTotal: {}", chains.len());
 
         Ok(())
     }
