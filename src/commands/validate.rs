@@ -35,9 +35,9 @@ impl ValidateCommand {
     pub fn run(self) -> Result<(), ValidateCommandError> {
         let repository: Repository = self.repository_path.try_into()?;
         let dependencies: DependencyList<Module, Module> = repository.try_into()?;
-        let chains = dependencies.to_dependency_chain_list().into_iter().filter(|chain| chain.is_circular).collect::<HashSet<DependencyChain<Module>>>();
+        let chains = dependencies.to_dependency_chain_list().into_iter().filter(|chain| chain.is_circular()).collect::<HashSet<DependencyChain<Module>>>();
 
-        println!("{:?}", chains);
+        println!("{:?} \n \n Count: {:?}", chains, chains.len());
 
         Ok(())
     }
