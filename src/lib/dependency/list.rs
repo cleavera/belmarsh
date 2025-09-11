@@ -51,9 +51,22 @@ impl<TFrom: Display + Clone + Eq + Hash, TTo: Display + Clone + Eq + Hash> Depen
     }
 }
 
-impl<TDependencyType: Clone + Display + Eq + Hash + Send + Sync> DependencyList<TDependencyType, TDependencyType> {
-    pub fn to_dependency_chain_list(&self) -> HashSet<DependencyChain<TDependencyType>> {
-        DependencyChainListBuilder::<TDependencyType>::build(self.group_by_from())
+impl<TDependencyType: Clone + Display + Eq + Hash + Send + Sync>
+    DependencyList<TDependencyType, TDependencyType>
+{
+    pub fn to_dependency_chain_list(&self) -> HashSet<DependencyChain> {
+        let grouped_by_from = self.group_by_from();
+        let string_grouped_dependencies: HashMap<String, Vec<String>> = grouped_by_from
+            .into_iter()
+            .map(|(from, to_list)| {
+                (
+                    from.to_string(),
+                    to_list.into_iter().map(|to| to.to_string()).collect(),
+                )
+            })
+            .collect();
+
+        DependencyChainListBuilder::build(string_grouped_dependencies)
     }
 }
 
