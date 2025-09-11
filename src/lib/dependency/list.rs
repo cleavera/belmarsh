@@ -51,7 +51,7 @@ impl<TFrom: Display + Clone + Eq + Hash, TTo: Display + Clone + Eq + Hash> Depen
     }
 }
 
-impl<TDependencyType: Clone + Display + Eq + Hash> DependencyList<TDependencyType, TDependencyType> {
+impl<TDependencyType: Clone + Display + Eq + Hash + Send + Sync> DependencyList<TDependencyType, TDependencyType> {
     pub fn to_dependency_chain_list(&self) -> HashSet<DependencyChain<TDependencyType>> {
         DependencyChainListBuilder::<TDependencyType>::build(self.group_by_from())
     }

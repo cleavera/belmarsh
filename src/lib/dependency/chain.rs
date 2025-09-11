@@ -4,6 +4,8 @@ use std::{
     fmt::Display,
 };
 
+use rayon::prelude::*;
+
 #[derive(Clone, Debug)]
 pub struct DependencyChain<TDependency: Display>(Vec<TDependency>);
 
@@ -78,23 +80,19 @@ pub struct DependencyChainListBuilder<TDependency: Display> {
     grouped_dependencies: HashMap<TDependency, Vec<TDependency>>,
 }
 
-impl<TDependency: Clone + Display + Eq + Hash> DependencyChainListBuilder<TDependency> {
-    pub fn build<TDep: Clone + Display + Eq + Hash>(
+impl<TDependency: Clone + Display + Eq + Hash + Send + Sync> DependencyChainListBuilder<TDependency> {
+    pub fn build<TDep: Clone + Display + Eq + Hash + Send + Sync>(
         grouped_dependencies: HashMap<TDep, Vec<TDep>>,
     ) -> HashSet<DependencyChain<TDep>> {
         let builder = DependencyChainListBuilder {
             grouped_dependencies,
         };
 
-        let mut results = HashSet::new();
-
-        for (key, dependencies) in builder.grouped_dependencies.iter() {
+        builder.grouped_dependencies.par_iter().flat_map(|(key, dependencies)| {
             let chain = DependencyChain(vec![(*key).clone()]);
 
-            results.extend(builder.dfs(chain, dependencies));
-        }
-
-        results
+            builder.dfs(chain, dependencies)
+        }).collect()
     }
 
     fn dfs(
