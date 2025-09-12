@@ -67,9 +67,7 @@ pub struct DependencyChainListBuilder {
 }
 
 impl DependencyChainListBuilder {
-    pub fn build(
-        grouped_dependencies: HashMap<String, Vec<String>>,
-    ) -> HashSet<DependencyChain> {
+    pub fn build(grouped_dependencies: HashMap<String, Vec<String>>) -> HashSet<DependencyChain> {
         let builder = DependencyChainListBuilder {
             grouped_dependencies,
         };
@@ -85,11 +83,7 @@ impl DependencyChainListBuilder {
             .collect()
     }
 
-    fn dfs(
-        &self,
-        chain: DependencyChain,
-        dependencies: &Vec<String>,
-    ) -> HashSet<DependencyChain> {
+    fn dfs(&self, chain: DependencyChain, dependencies: &Vec<String>) -> HashSet<DependencyChain> {
         if dependencies.is_empty() || chain.is_circular() || chain.has_loop() {
             let mut hs = HashSet::new();
 
@@ -103,9 +97,7 @@ impl DependencyChainListBuilder {
             .flat_map(|dependency| {
                 self.dfs(
                     chain.extend(dependency.clone()),
-                    self.grouped_dependencies
-                        .get(dependency)
-                        .unwrap_or(&vec![]),
+                    self.grouped_dependencies.get(dependency).unwrap_or(&vec![]),
                 )
             })
             .collect::<HashSet<DependencyChain>>()

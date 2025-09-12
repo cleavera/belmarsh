@@ -38,14 +38,18 @@ impl<TFrom: Display, TTo: Display> AsRef<HashSet<Dependency<TFrom, TTo>>>
     }
 }
 
-impl<TFrom: Display + Clone + Eq + Hash, TTo: Display + Clone + Eq + Hash> DependencyList<TFrom, TTo> {
+impl<TFrom: Display + Clone + Eq + Hash, TTo: Display + Clone + Eq + Hash>
+    DependencyList<TFrom, TTo>
+{
     pub fn group_by_from(&self) -> HashMap<TFrom, Vec<TTo>>
     where
         TFrom: Eq + Hash,
     {
         let mut map: HashMap<TFrom, Vec<TTo>> = HashMap::new();
         for dep in self.0.iter() {
-            map.entry(dep.from.clone()).or_default().push(dep.to.clone());
+            map.entry(dep.from.clone())
+                .or_default()
+                .push(dep.to.clone());
         }
         map
     }

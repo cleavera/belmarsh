@@ -4,8 +4,8 @@ use std::hash::{Hash, Hasher};
 use crate::module::Module;
 
 pub mod chain;
-pub mod list;
 pub mod cycle;
+pub mod list;
 
 #[derive(Debug)]
 pub struct Dependency<TFrom: Display, TTo: Display> {
@@ -23,6 +23,10 @@ impl<TFrom: Display, TTo: Display> PartialEq for Dependency<TFrom, TTo> {
 impl<TFrom: Display, TTo: Display> Dependency<TFrom, TTo> {
     pub fn create(from: TFrom, to: TTo) -> Dependency<TFrom, TTo> {
         Dependency { from, to }
+    }
+
+    pub fn to_dot_format(&self) -> String {
+        format!("  \"{}\" -> \"{}\";", self.from, self.to)
     }
 }
 

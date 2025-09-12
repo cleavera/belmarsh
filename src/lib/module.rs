@@ -1,5 +1,5 @@
-use std::{fmt::Display, path::Component};
 use std::hash::{Hash, Hasher};
+use std::{fmt::Display, path::Component};
 
 #[derive(Debug)]
 pub enum ModuleFromComponentError {

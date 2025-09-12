@@ -37,8 +37,11 @@ impl CycleDetector {
             .insert(current_node.clone(), NodeState::Visiting);
         path.push(current_node.clone());
 
-        let dependencies_to_check =
-            self.grouped_dependencies.get(current_node).cloned().unwrap_or_default();
+        let dependencies_to_check = self
+            .grouped_dependencies
+            .get(current_node)
+            .cloned()
+            .unwrap_or_default();
 
         for dependency in dependencies_to_check {
             match self.states.get(&dependency) {
@@ -58,7 +61,6 @@ impl CycleDetector {
         }
 
         path.pop();
-        self.states
-            .insert(current_node.clone(), NodeState::Visited);
+        self.states.insert(current_node.clone(), NodeState::Visited);
     }
 }

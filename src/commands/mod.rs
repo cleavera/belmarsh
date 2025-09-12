@@ -1,9 +1,11 @@
+pub mod graph;
 pub mod statistics;
 pub mod validate;
 
 use clap::{Parser, Subcommand};
 use statistics::StatisticsCommand;
 
+use crate::commands::graph::GraphCommand;
 use crate::commands::validate::ValidateCommand;
 
 #[derive(Parser, Debug)]
@@ -18,4 +20,5 @@ pub struct Cli {
 pub enum Commands {
     Statistics(StatisticsCommand),
     Validate(ValidateCommand),
+    Graph(GraphCommand),
 }
