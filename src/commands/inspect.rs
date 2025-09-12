@@ -1,5 +1,8 @@
+use std::collections::HashSet;
+
 use belmarsh::{
     dependency::list::{DependencyList, DependencyListFromRepositoryError},
+    dependency::Dependency,
     module::Module,
     repository::{child::RepositoryChildPath, Repository, RepositoryFromStringError},
 };
@@ -9,6 +12,9 @@ use clap::{Args, command};
 #[command(about = "Lists all the files that draw in a non-internal dependency")]
 pub struct InspectCommand {
     repository_path: String,
+
+    #[arg(long)]
+    filter_from: Option<String>,
 }
 
 #[derive(Debug)]
@@ -34,7 +40,19 @@ impl InspectCommand {
         let repository: Repository = self.repository_path.try_into()?;
         let dependencies: DependencyList<RepositoryChildPath, Module> = repository.try_into()?;
 
-        println!("{}", dependencies);
+        if let Some(filter_module_name) = self.filter_from {
+            let filtered_deps_set: HashSet<Dependency<RepositoryChildPath, Module>> = dependencies
+                .as_ref()
+                .iter()
+                .filter(|dep| dep.is_from_module(&filter_module_name))
+                .cloned()
+                .collect();
+
+            let filtered_deps_list = DependencyList::from(filtered_deps_set);
+            println!("{}", filtered_deps_list);
+        } else {
+            println!("{}", dependencies);
+        }
 
         Ok(())
     }
