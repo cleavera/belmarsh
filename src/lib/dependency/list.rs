@@ -38,6 +38,18 @@ impl<TFrom: Display, TTo: Display> AsRef<HashSet<Dependency<TFrom, TTo>>>
     }
 }
 
+impl<TFrom: Display, TTo: Display> Display for DependencyList<TFrom, TTo> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let output = self
+            .0
+            .iter()
+            .map(|dep| dep.to_string())
+            .collect::<Vec<String>>()
+            .join("\n");
+        write!(f, "{}", output)
+    }
+}
+
 impl<TFrom: Display + Clone + Eq + Hash, TTo: Display + Clone + Eq + Hash>
     DependencyList<TFrom, TTo>
 {
@@ -260,6 +272,85 @@ impl TryFrom<Repository> for DependencyList<Module, Module> {
             .into_iter()
             .flatten()
             .collect::<HashSet<Dependency<Module, Module>>>()
+            .into())
+    }
+}
+
+impl TryFrom<Repository> for DependencyList<RepositoryChildPath, Module> {
+    type Error = DependencyListFromRepositoryError;
+
+    fn try_from(repository: Repository) -> Result<Self, Self::Error> {
+        let (dependencies, errors): (
+            Vec<Vec<Dependency<RepositoryChildPath, Module>>>,
+            Vec<DependencyListFromRepositoryAnalyzeFileError>,
+        ) = repository
+            .files()
+            .map(
+                |analyzed_file_result| -> Result<
+                    Vec<Dependency<RepositoryChildPath, Module>>,
+                    DependencyListFromRepositoryAnalyzeFileError,
+                > {
+                    let analyzed_file = match analyzed_file_result {
+                        Ok(file) => file,
+                        Err(e) => match e {
+                            RepositoryFilesError::CannotAnalyzeFile(_) => return Ok(vec![]),
+                            _ => return Err(e.into()),
+                        },
+                    };
+
+                    let dependencies: DependencyList<RepositoryChildPath, RepositoryChildPath> =
+                        match analyzed_file.try_into() {
+                            Ok(d) => d,
+                            Err(e) => return Err(e.into()),
+                        };
+
+                    dependencies
+                        .as_ref()
+                        .iter()
+                        .map(
+                            |d| -> Result<
+                                Option<Dependency<RepositoryChildPath, Module>>,
+                                DependencyListFromRepositoryAnalyzeFileError,
+                            > {
+                                let (from_result, to_result) = (d.from.module(), d.to.module());
+
+                                let from = match from_result {
+                                    Ok(from_module) => from_module,
+                                    Err(e) => return Err(e.into()),
+                                };
+
+                                let to = match to_result {
+                                    Ok(to_module) => to_module,
+                                    Err(e) => return Err(e.into()),
+                                };
+
+                                if from == to {
+                                    return Ok(None);
+                                }
+
+                                Ok(Some(Dependency::create(d.from.clone(), to)))
+                            },
+                        )
+                        .filter_map(|result| result.transpose())
+                        .collect::<Result<
+                            Vec<Dependency<RepositoryChildPath, Module>>,
+                            DependencyListFromRepositoryAnalyzeFileError,
+                        >>()
+                },
+            )
+            .partition_map(|result| match result {
+                Ok(deps) => Either::Left(deps),
+                Err(e) => Either::Right(e),
+            });
+
+        if !errors.is_empty() {
+            return Err(DependencyListFromRepositoryError::InvalidFiles(errors));
+        }
+
+        Ok(dependencies
+            .into_iter()
+            .flatten()
+            .collect::<HashSet<Dependency<RepositoryChildPath, Module>>>()
             .into())
     }
 }

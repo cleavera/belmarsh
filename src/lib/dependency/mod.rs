@@ -39,6 +39,12 @@ impl<TFrom: Display, TTo: Display> Hash for Dependency<TFrom, TTo> {
     }
 }
 
+impl<TFrom: Display, TTo: Display> Display for Dependency<TFrom, TTo> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} > {}", self.from, self.to)
+    }
+}
+
 impl Dependency<Module, Module> {
     pub fn is_internal(&self) -> bool {
         self.from.to_string() == self.to.to_string()
