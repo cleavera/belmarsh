@@ -5,6 +5,7 @@ use commands::{Cli, Commands, statistics::StatisticsCommandError};
 use std::time::Instant;
 
 use crate::commands::graph::GraphCommandError;
+use crate::commands::inspect::InspectCommandError;
 use crate::commands::validate::ValidateCommandError;
 
 #[derive(Debug)]
@@ -12,6 +13,7 @@ pub enum BelmarshCliError {
     Statistics(StatisticsCommandError),
     Validate(ValidateCommandError),
     Graph(GraphCommandError),
+    Inspect(InspectCommandError),
 }
 
 fn main() -> Result<(), BelmarshCliError> {
@@ -29,6 +31,7 @@ fn main() -> Result<(), BelmarshCliError> {
             validate.run().map_err(|e| BelmarshCliError::Validate(e))?
         }
         Commands::Graph(graph) => graph.run().map_err(|e| BelmarshCliError::Graph(e))?,
+        Commands::Inspect(inspect) => inspect.run().map_err(|e| BelmarshCliError::Inspect(e))?,
     }
 
     let duration = start.elapsed();
