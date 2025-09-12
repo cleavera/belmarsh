@@ -5,6 +5,7 @@ use crate::module::Module;
 
 pub mod chain;
 pub mod list;
+pub mod cycle;
 
 #[derive(Debug)]
 pub struct Dependency<TFrom: Display, TTo: Display> {

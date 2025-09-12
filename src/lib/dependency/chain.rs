@@ -79,6 +79,7 @@ impl DependencyChainListBuilder {
             .par_iter()
             .flat_map(|(key, dependencies)| {
                 let chain = DependencyChain(vec![key.clone()]);
+
                 builder.dfs(chain, dependencies)
             })
             .collect()

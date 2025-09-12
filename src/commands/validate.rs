@@ -1,7 +1,10 @@
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 use belmarsh::{
-    dependency::{chain::DependencyChain, list::{DependencyList, DependencyListFromRepositoryError}},
+    dependency::{
+        cycle::CycleDetector,
+        list::{DependencyList, DependencyListFromRepositoryError},
+    },
     module::Module,
     repository::{Repository, RepositoryFromStringError},
 };
@@ -35,10 +38,23 @@ impl ValidateCommand {
     pub fn run(self) -> Result<(), ValidateCommandError> {
         let repository: Repository = self.repository_path.try_into()?;
         let dependencies: DependencyList<Module, Module> = repository.try_into()?;
-        let chains = dependencies.to_dependency_chain_list().into_iter().filter(|chain| chain.is_circular()).collect::<HashSet<DependencyChain>>();
+
+        let grouped_by_from = dependencies.group_by_from();
+        let string_grouped_dependencies: HashMap<String, Vec<String>> = grouped_by_from
+            .into_iter()
+            .map(|(from, to_list)| {
+                (
+                    from.to_string(),
+                    to_list.into_iter().map(|to| to.to_string()).collect(),
+                )
+            })
+            .collect();
+
+        let detector = CycleDetector::new(string_grouped_dependencies);
+        let chains = detector.find_cycles();
 
         for chain in chains.iter() {
-            println!("Circular dependency: {}", chain); 
+            println!("Circular dependency: {}", chain);
         }
 
         println!("\n\nTotal: {}", chains.len());
