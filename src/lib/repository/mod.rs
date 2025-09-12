@@ -4,8 +4,8 @@ pub mod path;
 
 use file::{RepositoryFile, RepositoryFileFromEntryError};
 use path::{RepositoryPath, RepositoryPathFromStringError};
-use walkdir::WalkDir;
 use rayon::prelude::*;
+use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub enum RepositoryFilesError {
@@ -25,6 +25,7 @@ impl From<walkdir::Error> for RepositoryFilesError {
     }
 }
 
+#[derive(Debug)]
 pub struct Repository(RepositoryPath);
 
 #[derive(Debug)]

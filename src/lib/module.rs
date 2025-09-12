@@ -1,4 +1,5 @@
-use std::path::Component;
+use std::{fmt::Display, path::Component};
+use std::hash::{Hash, Hasher};
 
 #[derive(Debug)]
 pub enum ModuleFromComponentError {
@@ -15,8 +16,20 @@ fn component_to_string(component: Component) -> String {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Module(String);
+
+impl Hash for Module {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl Display for Module {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 impl<'a> TryFrom<Component<'a>> for Module {
     type Error = ModuleFromComponentError;
@@ -34,5 +47,11 @@ impl<'a> TryFrom<Component<'a>> for Module {
 impl From<String> for Module {
     fn from(value: String) -> Self {
         Module(value)
+    }
+}
+
+impl AsRef<str> for Module {
+    fn as_ref(&self) -> &str {
+        &self.0
     }
 }

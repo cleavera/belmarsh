@@ -2,12 +2,15 @@ use crate::{
     file_path::FilePath,
     import_path::ImportPath,
     module::{Module, ModuleFromComponentError},
-    repository::{path::{RepositoryPath}}
+    repository::path::RepositoryPath,
 };
 
 use std::{
+    fmt::Display,
     path::{Path, PathBuf},
 };
+
+use super::file::RepositoryFile;
 
 #[derive(Debug)]
 pub enum RepositoryChildPathModuleError {
@@ -57,6 +60,25 @@ pub enum RepositoryChildPathFromPathError {
     ImportOutsideRoot(String),
 }
 
+#[derive(Debug)]
+pub enum RepositoryChildPathFromRepositoryFileError {
+    File(RepositoryChildPathFromImportPathError),
+    FilePath(RepositoryChildPathFromFilePathError),
+}
+
+impl From<RepositoryChildPathFromFilePathError> for RepositoryChildPathFromRepositoryFileError {
+    fn from(value: RepositoryChildPathFromFilePathError) -> Self {
+        RepositoryChildPathFromRepositoryFileError::FilePath(value)
+    }
+}
+
+impl From<RepositoryChildPathFromImportPathError> for RepositoryChildPathFromRepositoryFileError {
+    fn from(value: RepositoryChildPathFromImportPathError) -> Self {
+        RepositoryChildPathFromRepositoryFileError::File(value)
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct RepositoryChildPath(PathBuf);
 
 impl RepositoryChildPath {
@@ -67,6 +89,15 @@ impl RepositoryChildPath {
         Ok(RepositoryChildPath::from_path(
             import_path.as_ref(),
             repository_path.as_ref(),
+        )?)
+    }
+
+    pub fn from_repository_file(
+        repository_file: &RepositoryFile,
+    ) -> Result<RepositoryChildPath, RepositoryChildPathFromRepositoryFileError> {
+        Ok(RepositoryChildPath::from_file_path(
+            repository_file.file_path(),
+            repository_file.as_ref(),
         )?)
     }
 
@@ -99,5 +130,11 @@ impl RepositoryChildPath {
         })?;
 
         Ok(Module::try_from(component)?)
+    }
+}
+
+impl Display for RepositoryChildPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.display())
     }
 }

@@ -1,11 +1,12 @@
-use std::path::{Path, PathBuf};
 use crate::file_parent_path::FileParentPath;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub enum ImportPathFromImportStringError {
     CannotFindFile(String),
 }
 
+#[derive(Debug)]
 pub struct ImportPath(PathBuf);
 
 impl Into<PathBuf> for ImportPath {
