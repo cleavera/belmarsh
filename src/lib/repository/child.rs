@@ -78,7 +78,7 @@ impl From<RepositoryChildPathFromImportPathError> for RepositoryChildPathFromRep
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct RepositoryChildPath(PathBuf);
 
 impl RepositoryChildPath {

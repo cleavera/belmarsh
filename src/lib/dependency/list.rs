@@ -354,3 +354,53 @@ impl TryFrom<Repository> for DependencyList<RepositoryChildPath, Module> {
             .into())
     }
 }
+
+impl TryFrom<Repository> for DependencyList<RepositoryChildPath, RepositoryChildPath> {
+    type Error = DependencyListFromRepositoryError;
+
+    fn try_from(repository: Repository) -> Result<Self, Self::Error> {
+        let (dependencies, errors): (
+            Vec<DependencyList<RepositoryChildPath, RepositoryChildPath>>,
+            Vec<DependencyListFromRepositoryAnalyzeFileError>,
+        ) = repository
+            .files()
+            .map(
+                |analyzed_file_result| -> Result<
+                    DependencyList<RepositoryChildPath, RepositoryChildPath>,
+                    DependencyListFromRepositoryAnalyzeFileError,
+                > {
+                    let analyzed_file = match analyzed_file_result {
+                        Ok(file) => file,
+                        Err(e) => match e {
+                            RepositoryFilesError::CannotAnalyzeFile(_) => {
+                                // This is not ideal, but we are ignoring files that cannot be analyzed
+                                return Ok(HashSet::new().into());
+                            }
+                            _ => return Err(e.into()),
+                        },
+                    };
+
+                    let dependencies: DependencyList<RepositoryChildPath, RepositoryChildPath> =
+                        match analyzed_file.try_into() {
+                            Ok(d) => d,
+                            Err(e) => return Err(e.into()),
+                        };
+                    Ok(dependencies)
+                },
+            )
+            .partition_map(|result| match result {
+                Ok(deps) => Either::Left(deps),
+                Err(e) => Either::Right(e),
+            });
+
+        if !errors.is_empty() {
+            return Err(DependencyListFromRepositoryError::InvalidFiles(errors));
+        }
+
+        Ok(dependencies
+            .into_iter()
+            .flat_map(|dep_list| dep_list.0)
+            .collect::<HashSet<Dependency<RepositoryChildPath, RepositoryChildPath>>>()
+            .into())
+    }
+}
