@@ -14,6 +14,9 @@ use clap::{Args, command};
 #[command(about = "Validate")]
 pub struct ValidateCommand {
     repository_path: String,
+
+    #[arg(long, help = "Run circular module validation")]
+    circular_modules: bool,
 }
 
 #[derive(Debug)]
@@ -36,28 +39,33 @@ impl From<DependencyListFromRepositoryError> for ValidateCommandError {
 
 impl ValidateCommand {
     pub fn run(self) -> Result<(), ValidateCommandError> {
-        let repository: Repository = self.repository_path.try_into()?;
-        let dependencies: DependencyList<Module, Module> = repository.try_into()?;
+        let run_all = !self.circular_modules;
 
-        let grouped_by_from = dependencies.group_by_from();
-        let string_grouped_dependencies: HashMap<String, Vec<String>> = grouped_by_from
-            .into_iter()
-            .map(|(from, to_list)| {
-                (
-                    from.to_string(),
-                    to_list.into_iter().map(|to| to.to_string()).collect(),
-                )
-            })
-            .collect();
+        if run_all || self.circular_modules {
+            println!("Running circular module validation");
+            let repository: Repository = self.repository_path.clone().try_into()?;
+            let dependencies: DependencyList<Module, Module> = repository.try_into()?;
 
-        let detector = CycleDetector::new(string_grouped_dependencies);
-        let chains = detector.find_cycles();
+            let grouped_by_from = dependencies.group_by_from();
+            let string_grouped_dependencies: HashMap<String, Vec<String>> = grouped_by_from
+                .into_iter()
+                .map(|(from, to_list)| {
+                    (
+                        from.to_string(),
+                        to_list.into_iter().map(|to| to.to_string()).collect(),
+                    )
+                })
+                .collect();
 
-        for chain in chains.iter() {
-            println!("Circular dependency: {}", chain);
+            let detector = CycleDetector::new(string_grouped_dependencies);
+            let chains = detector.find_cycles();
+
+            for chain in chains.iter() {
+                println!("Circular dependency: {}", chain);
+            }
+
+            println!("\n\nTotal: {}", chains.len());
         }
-
-        println!("\n\nTotal: {}", chains.len());
 
         Ok(())
     }
