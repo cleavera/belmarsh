@@ -1,12 +1,12 @@
 mod commands;
 
 use clap::Parser;
+use commands::validate::ValidateCommandError;
 use commands::{Cli, Commands, statistics::StatisticsCommandError};
 use std::time::Instant;
 
 use crate::commands::graph::GraphCommandError;
 use crate::commands::inspect::InspectCommandError;
-use crate::commands::validate::ValidateCommandError;
 
 #[derive(Debug)]
 pub enum BelmarshCliError {
