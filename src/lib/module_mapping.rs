@@ -1,3 +1,4 @@
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ModuleMapping {
     from: String,
     to: String,
