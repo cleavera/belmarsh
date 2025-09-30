@@ -117,12 +117,12 @@ impl RepositoryFile {
                 let parent_dir: FileParentPath = FileParentPath::from_file_path(&self.file_path);
 
                 for line in reader.lines() {
-                    let line = line.map_err(|e| {
+                    let line = self.import_mappings.replace_import_aliases(&line.map_err(|e| {
                         RepositoryFileResolveImportsError::Io(
                             e,
                             self.file_path.as_ref().to_path_buf(),
                         )
-                    })?;
+                    })?);
 
                     if let Some(captures) = IMPORT_REGEX.captures(&line) {
                         if let Some(path_capture) = captures.get(1) {
