@@ -42,6 +42,13 @@ pub struct ValidateCommand {
         value_name = "ALIAS:PATH"
     )]
     module_mapping_params: Vec<String>,
+
+    #[arg(
+        long,
+        help = "Folders to skip when walking the repository (e.g. node_modules)",
+        value_name = "FOLDER_NAME"
+    )]
+    skip_folders: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -132,8 +139,11 @@ impl ValidateCommand {
             let module_mappings: ModuleMappings =
                 ModuleMappings::from_param_strings(self.module_mapping_params)?;
 
-            let repository: Repository =
-                Repository::new(self.repository_path.try_into()?, module_mappings);
+            let repository: Repository = Repository::new(
+                self.repository_path.try_into()?,
+                module_mappings,
+                self.skip_folders,
+            );
 
             if run_all || self.circular_modules {
                 println!("Running circular module validation");

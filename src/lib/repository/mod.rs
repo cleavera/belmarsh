@@ -31,6 +31,7 @@ impl From<walkdir::Error> for RepositoryFilesError {
 pub struct Repository {
     path: RepositoryPath,
     mappings: ModuleMappings,
+    skip_folders: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -51,6 +52,7 @@ impl TryFrom<String> for Repository {
         Ok(Repository {
             path: value.try_into()?,
             mappings: HashSet::new().into(),
+            skip_folders: Vec::new(),
         })
     }
 }
@@ -62,26 +64,34 @@ impl TryFrom<&str> for Repository {
         Ok(Repository {
             path: value.try_into()?,
             mappings: HashSet::new().into(),
+            skip_folders: Vec::new(),
         })
     }
 }
 
 impl Repository {
-    pub fn new(path: RepositoryPath, mappings: ModuleMappings) -> Self {
-        Repository { path, mappings }
+    pub fn new(path: RepositoryPath, mappings: ModuleMappings, skip_folders: Vec<String>) -> Self {
+        Repository {
+            path,
+            mappings,
+            skip_folders,
+        }
     }
 
     pub fn files(
         &self,
-    ) -> rayon::iter::Map<
-        rayon::iter::IterBridge<walkdir::IntoIter>,
-        impl Fn(
-            Result<walkdir::DirEntry, walkdir::Error>,
-        ) -> Result<RepositoryFile, RepositoryFilesError>,
-    > {
+    ) -> impl ParallelIterator<Item = Result<RepositoryFile, RepositoryFilesError>> {
         let mappings = self.mappings.clone();
+        let skip_folders = self.skip_folders.clone();
         WalkDir::new(self.path.as_ref())
             .into_iter()
+            .filter_entry(move |entry| {
+                !entry
+                    .file_name()
+                    .to_str()
+                    .map(|s| skip_folders.contains(&s.to_string()))
+                    .unwrap_or(false)
+            })
             .par_bridge()
             .map(
                 move |entry| -> Result<RepositoryFile, RepositoryFilesError> {
