@@ -62,6 +62,12 @@ impl ModuleMappings {
                 .collect::<Result<HashSet<ModuleMapping>, ModuleMappingsFromParamStringsError>>()?,
         ))
     }
+
+    pub fn replace_import_aliases(&self, line: &str) -> String {
+        self.0.iter().fold(line.to_string(), |acc, mapping| {
+            mapping.replace_import_alias(&acc)
+        })
+    }
 }
 
 impl From<HashSet<ModuleMapping>> for ModuleMappings {
