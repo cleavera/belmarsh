@@ -2,14 +2,14 @@ use belmarsh::{
     dependency::Dependency,
     file_path::FilePath,
     module_mapping::ModuleMappings,
+    module_mapping::ModuleMappingsFromParamStringsError,
     repository::{
-        Repository, RepositoryFilesError, RepositoryFromStringError,
+        Repository, RepositoryFilesError, RepositoryFromStringError, path::RepositoryPathFromStringError,
         child::{
             RepositoryChildPath, RepositoryChildPathFromImportPathError,
             RepositoryChildPathModuleError,
         },
         file::{RepositoryFileModuleError, RepositoryFileResolveImportsError},
-        path::RepositoryPathFromStringError,
     },
 };
 use clap::{Args, command};
@@ -28,6 +28,13 @@ pub struct StatisticsCommand {
         default_value = "node_modules"
     )]
     skip_folders: Vec<String>,
+
+    #[arg(
+        long,
+        help = "Add a module mapping e.g. --module-mapping @prefix:./path/to/modules",
+        value_name = "ALIAS:PATH"
+    )]
+    module_mapping: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -39,6 +46,7 @@ pub enum StatisticsCommandError {
     CannotGetModuleForRepositoryFile(RepositoryFileModuleError),
     CannotResolveImports(RepositoryFileResolveImportsError),
     CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
+    CouldNotParseModuleMapCollection(ModuleMappingsFromParamStringsError),
 }
 
 impl From<RepositoryFilesError> for StatisticsCommandError {
@@ -77,11 +85,20 @@ impl From<RepositoryPathFromStringError> for StatisticsCommandError {
     }
 }
 
+impl From<ModuleMappingsFromParamStringsError> for StatisticsCommandError {
+    fn from(err: ModuleMappingsFromParamStringsError) -> Self {
+        StatisticsCommandError::CouldNotParseModuleMapCollection(err)
+    }
+}
+
 impl StatisticsCommand {
     pub fn run(self) -> Result<(), StatisticsCommandError> {
+        let module_mappings: ModuleMappings =
+            ModuleMappings::from_param_strings(self.module_mapping)?;
+
         let repository: Repository = Repository::new(
             self.repository_path.try_into()?,
-            ModuleMappings::from(std::collections::HashSet::new()),
+            module_mappings,
             self.skip_folders,
         );
 

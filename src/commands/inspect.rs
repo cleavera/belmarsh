@@ -4,11 +4,8 @@ use belmarsh::{
     dependency::Dependency,
     dependency::list::{DependencyList, DependencyListFromRepositoryError},
     module::Module,
-    module_mapping::ModuleMappings,
-    repository::{
-        Repository, RepositoryFromStringError, child::RepositoryChildPath,
-        path::RepositoryPathFromStringError,
-    },
+    module_mapping::{ModuleMappings, ModuleMappingsFromParamStringsError},
+    repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
 
@@ -27,6 +24,13 @@ pub struct InspectCommand {
         default_value = "node_modules"
     )]
     skip_folders: Vec<String>,
+
+    #[arg(
+        long,
+        help = "Add a module mapping e.g. --module-mapping @prefix:./path/to/modules",
+        value_name = "ALIAS:PATH"
+    )]
+    module_mapping: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -34,6 +38,7 @@ pub enum InspectCommandError {
     CouldNotParseRepository(RepositoryFromStringError),
     CouldNotGetDependencies(DependencyListFromRepositoryError),
     CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
+    CouldNotParseModuleMapCollection(ModuleMappingsFromParamStringsError),
 }
 
 impl From<RepositoryFromStringError> for InspectCommandError {
@@ -54,11 +59,20 @@ impl From<RepositoryPathFromStringError> for InspectCommandError {
     }
 }
 
+impl From<ModuleMappingsFromParamStringsError> for InspectCommandError {
+    fn from(err: ModuleMappingsFromParamStringsError) -> Self {
+        InspectCommandError::CouldNotParseModuleMapCollection(err)
+    }
+}
+
 impl InspectCommand {
     pub fn run(self) -> Result<(), InspectCommandError> {
+        let module_mappings: ModuleMappings =
+            ModuleMappings::from_param_strings(self.module_mapping)?;
+
         let repository: Repository = Repository::new(
             self.repository_path.try_into()?,
-            ModuleMappings::from(std::collections::HashSet::new()),
+            module_mappings,
             self.skip_folders,
         );
         let dependencies: DependencyList<RepositoryChildPath, Module> = repository.try_into()?;
