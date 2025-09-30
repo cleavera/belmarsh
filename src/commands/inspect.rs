@@ -5,7 +5,10 @@ use belmarsh::{
     dependency::list::{DependencyList, DependencyListFromRepositoryError},
     module::Module,
     module_mapping::{ModuleMappings, ModuleMappingsFromParamStringsError},
-    repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath, path::RepositoryPathFromStringError},
+    repository::{
+        Repository, RepositoryFromStringError, child::RepositoryChildPath,
+        path::RepositoryPathFromStringError,
+    },
 };
 use clap::{Args, command};
 

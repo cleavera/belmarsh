@@ -4,12 +4,13 @@ use belmarsh::{
     module_mapping::ModuleMappings,
     module_mapping::ModuleMappingsFromParamStringsError,
     repository::{
-        Repository, RepositoryFilesError, RepositoryFromStringError, path::RepositoryPathFromStringError,
+        Repository, RepositoryFilesError, RepositoryFromStringError,
         child::{
             RepositoryChildPath, RepositoryChildPathFromImportPathError,
             RepositoryChildPathModuleError,
         },
         file::{RepositoryFileModuleError, RepositoryFileResolveImportsError},
+        path::RepositoryPathFromStringError,
     },
 };
 use clap::{Args, command};
@@ -152,6 +153,7 @@ impl StatisticsCommand {
         let total_count = counts?.into_iter().sum::<usize>();
         let total_files_checked = file_check_count.load(Ordering::SeqCst);
 
+        println!("Number of modules: {}", repository.modules().len());
         println!("Total imports from outside own modules: {}", total_count);
         println!("Total files checked: {}", total_files_checked);
 

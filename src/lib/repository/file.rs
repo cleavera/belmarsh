@@ -106,7 +106,7 @@ impl RepositoryFile {
     pub fn imports(&self) -> Result<&[ImportPath], RepositoryFileResolveImportsError> {
         lazy_static! {
             static ref IMPORT_REGEX: Regex =
-                Regex::new(r"import\s*\{[^}]*\}\s*from\s*'(\.[^']+)';")
+                Regex::new(r"import\s*\{[^}]*\}\s*from\s*'([\.\/][^']+)';")
                     .expect("Failed to compile regex");
         }
 

@@ -2,7 +2,7 @@ pub mod child;
 pub mod file;
 pub mod path;
 
-use crate::module_mapping::ModuleMappings;
+use crate::{module::Module, module_mapping::ModuleMappings};
 use file::{RepositoryFile, RepositoryFileFromEntryError};
 use path::{RepositoryPath, RepositoryPathFromStringError};
 use rayon::prelude::*;
@@ -102,5 +102,12 @@ impl Repository {
                     )?)
                 },
             )
+    }
+
+    pub fn modules(&self) -> HashSet<Module> {
+        self.files()
+            .filter_map(|file_result| file_result.ok())
+            .filter_map(|analyzed_file| analyzed_file.module().ok().cloned())
+            .collect()
     }
 }
