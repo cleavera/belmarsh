@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use belmarsh::{
     dependency::{Dependency, chain::DependencyChain},
-    module_mapping::{ModuleMappingsFromParamStringsError, ModuleMappings},
+    module_mapping::{ModuleMappings, ModuleMappingsFromParamStringsError},
     repository::{Repository, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
