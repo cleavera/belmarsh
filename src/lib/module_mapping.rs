@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct ModuleMapping {
     from: String,
@@ -35,4 +37,4 @@ impl ModuleMapping {
     }
 }
 
-pub struct ModuleMappings(HashMap<ModuleMapping, ModuleMapping>);
+pub struct ModuleMappings(HashSet<ModuleMapping>);

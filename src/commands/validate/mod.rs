@@ -6,7 +6,7 @@ use belmarsh::{
     repository::{Repository, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 pub mod barrel_imports_barrel;
 pub mod circular_files;
@@ -130,15 +130,14 @@ impl ValidateCommand {
             || self.external_barrel_imports
             || self.barrel_imports_barrel
         {
-            let module_mappings: HashMap<ModuleMapping, ModuleMapping> =
+            let module_mappings: HashSet<ModuleMapping> =
                 self.module_mapping_params
                     .iter()
                     .map(|param_string| {
-                        let mapping = ModuleMapping::from_param_string(param_string)?;
-                        Ok((mapping.clone(), mapping))
+                        Ok(ModuleMapping::from_param_string(param_string)?)
                     })
                     .collect::<Result<
-                        HashMap<ModuleMapping, ModuleMapping>,
+                        HashSet<ModuleMapping>,
                         ModuleMappingFromParamStringError,
                     >>()?;
 
