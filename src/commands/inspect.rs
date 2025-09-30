@@ -1,10 +1,10 @@
 use std::collections::HashSet;
 
 use belmarsh::{
-    dependency::list::{DependencyList, DependencyListFromRepositoryError},
     dependency::Dependency,
+    dependency::list::{DependencyList, DependencyListFromRepositoryError},
     module::Module,
-    repository::{child::RepositoryChildPath, Repository, RepositoryFromStringError},
+    repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath},
 };
 use clap::{Args, command};
 

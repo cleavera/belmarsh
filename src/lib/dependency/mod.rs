@@ -10,8 +10,8 @@ pub mod list;
 
 #[derive(Debug, Clone)]
 pub struct Dependency<TFrom: Display, TTo: Display> {
-    pub(in crate::dependency) from: TFrom,
-    pub(in crate::dependency) to: TTo,
+    pub from: TFrom,
+    pub to: TTo,
 }
 
 impl<TFrom: Display, TTo: Display> PartialEq for Dependency<TFrom, TTo> {
@@ -60,6 +60,14 @@ impl Dependency<&Module, &Module> {
 
 impl<TTo: Display> Dependency<RepositoryChildPath, TTo> {
     pub fn is_from_module(&self, module_name: &str) -> bool {
-        self.from.module().map_or(false, |m| m.to_string() == module_name)
+        self.from
+            .module()
+            .map_or(false, |m| m.to_string() == module_name)
+    }
+}
+
+impl Dependency<RepositoryChildPath, RepositoryChildPath> {
+    pub fn is_internal(&self) -> bool {
+        self.from.module().unwrap() == self.to.module().unwrap()
     }
 }

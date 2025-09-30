@@ -1,7 +1,7 @@
-pub mod statistics;
-pub mod validate;
 pub mod graph;
 pub mod inspect;
+pub mod statistics;
+pub mod validate;
 
 use clap::{Parser, Subcommand};
 

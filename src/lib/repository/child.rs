@@ -79,9 +79,16 @@ impl From<RepositoryChildPathFromImportPathError> for RepositoryChildPathFromRep
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct RepositoryChildPath(PathBuf);
+pub struct RepositoryChildPath {
+    path: PathBuf,
+    barrel: bool,
+}
 
 impl RepositoryChildPath {
+    fn new(path: PathBuf, barrel: bool) -> Self {
+        Self { path, barrel }
+    }
+
     pub fn from_import_path<TRepositoryPathRef: AsRef<RepositoryPath>>(
         import_path: &ImportPath,
         repository_path: TRepositoryPathRef,
@@ -116,7 +123,16 @@ impl RepositoryChildPath {
         repository_path: &RepositoryPath,
     ) -> Result<RepositoryChildPath, RepositoryChildPathFromPathError> {
         if let Ok(relative_path) = path.strip_prefix(repository_path) {
-            Ok(RepositoryChildPath(relative_path.into()))
+            let path_buf: PathBuf = relative_path.into();
+            let file_name = path_buf
+                .file_name()
+                .and_then(|f| f.to_str())
+                .unwrap_or_default();
+
+            Ok(RepositoryChildPath::new(
+                path_buf.clone(),
+                file_name == "index.ts" || file_name == "testing.ts",
+            ))
         } else {
             Err(RepositoryChildPathFromPathError::ImportOutsideRoot(
                 path.display().to_string(),
@@ -124,9 +140,13 @@ impl RepositoryChildPath {
         }
     }
 
+    pub fn is_barrel(&self) -> bool {
+        self.barrel
+    }
+
     pub fn module(&self) -> Result<Module, RepositoryChildPathModuleError> {
-        let component = self.0.components().next().ok_or_else(|| {
-            RepositoryChildPathModuleError::CouldNotGetModule(self.0.display().to_string())
+        let component = self.path.components().next().ok_or_else(|| {
+            RepositoryChildPathModuleError::CouldNotGetModule(self.path.display().to_string())
         })?;
 
         Ok(Module::try_from(component)?)
@@ -135,6 +155,6 @@ impl RepositoryChildPath {
 
 impl Display for RepositoryChildPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.display())
+        write!(f, "{}", self.path.display())
     }
 }

@@ -2,6 +2,7 @@ use std::{collections::HashMap, fmt::Display};
 
 use belmarsh::{
     dependency::{
+        Dependency,
         chain::DependencyChain,
         cycle::CycleDetector,
         list::{DependencyList, DependencyListFromRepositoryError},
@@ -21,13 +22,23 @@ pub struct ValidateCommand {
 
     #[arg(long, help = "Run circular file validation")]
     circular_files: bool,
+
+    #[arg(long, help = "Run external barrel validation")]
+    external_barrel_imports: bool,
 }
 
 #[derive(Debug)]
 pub enum ValidateCommandError {
     CircularModuleError(ValidateCircularModuleError),
     CircularFileError(ValidateCircularFilesError),
+    ExternalBarrelImportsError(ValidateExternalBarrelImportsError),
     CouldNotParseRepository(RepositoryFromStringError),
+}
+
+impl From<ValidateExternalBarrelImportsError> for ValidateCommandError {
+    fn from(value: ValidateExternalBarrelImportsError) -> Self {
+        ValidateCommandError::ExternalBarrelImportsError(value)
+    }
 }
 
 impl From<ValidateCircularFilesError> for ValidateCommandError {
@@ -70,8 +81,20 @@ impl From<DependencyListFromRepositoryError> for ValidateCircularFilesError {
     }
 }
 
+#[derive(Debug)]
+pub enum ValidateExternalBarrelImportsError {
+    CouldNotGetDependencies(DependencyListFromRepositoryError),
+}
+
+impl From<DependencyListFromRepositoryError> for ValidateExternalBarrelImportsError {
+    fn from(value: DependencyListFromRepositoryError) -> Self {
+        ValidateExternalBarrelImportsError::CouldNotGetDependencies(value)
+    }
+}
+
 enum ValidationFailure {
     CircularDependency(DependencyChain),
+    ExternalBarrelImport(Dependency<RepositoryChildPath, RepositoryChildPath>),
 }
 
 impl Display for ValidationFailure {
@@ -80,20 +103,28 @@ impl Display for ValidationFailure {
             ValidationFailure::CircularDependency(chain) => {
                 write!(f, "Circular dependency: {}", chain)
             }
+            ValidationFailure::ExternalBarrelImport(dependency) => {
+                write!(
+                    f,
+                    "External import does not use a barrel file: {}",
+                    dependency
+                )
+            }
         }
     }
 }
 
 impl ValidateCommand {
     pub fn run(self) -> Result<(), ValidateCommandError> {
-        let run_all = !self.circular_modules && !self.circular_files;
+        let run_all =
+            !self.circular_modules && !self.circular_files && !self.external_barrel_imports;
 
-        if run_all || self.circular_modules || self.circular_files {
-            let repository: Repository = self.repository_path.try_into()?;
+        if run_all || self.circular_modules || self.circular_files || self.external_barrel_imports {
+            let repository: Repository = self.repository_path.clone().try_into()?;
 
             if run_all || self.circular_modules {
                 println!("Running circular module validation");
-                let failures = ValidateCommand::validate_circular_modules(repository.clone())?;
+                let failures = self.validate_circular_modules(repository.clone())?;
 
                 for failure in failures.iter() {
                     println!("{}", failure);
@@ -104,7 +135,18 @@ impl ValidateCommand {
 
             if run_all || self.circular_files {
                 println!("\nRunning circular file validation");
-                let failures = ValidateCommand::validate_circular_files(repository.clone())?;
+                let failures = self.validate_circular_files(repository.clone())?;
+
+                for failure in failures.iter() {
+                    println!("{}", failure);
+                }
+
+                println!("\n\nTotal: {}", failures.len());
+            }
+
+            if run_all || self.external_barrel_imports {
+                println!("\nRunning external barrel import validation");
+                let failures = self.validate_external_barrel_imports(repository.clone())?;
 
                 for failure in failures.iter() {
                     println!("{}", failure);
@@ -118,6 +160,7 @@ impl ValidateCommand {
     }
 
     fn validate_circular_modules(
+        &self,
         repository: Repository,
     ) -> Result<Vec<ValidationFailure>, ValidateCircularModuleError> {
         let dependencies: DependencyList<Module, Module> = repository.try_into()?;
@@ -142,6 +185,7 @@ impl ValidateCommand {
     }
 
     fn validate_circular_files(
+        &self,
         repository: Repository,
     ) -> Result<Vec<ValidationFailure>, ValidateCircularFilesError> {
         let dependencies: DependencyList<RepositoryChildPath, RepositoryChildPath> =
@@ -165,5 +209,25 @@ impl ValidateCommand {
             .map(|chain| ValidationFailure::CircularDependency(chain))
             .collect())
     }
-}
 
+    fn validate_external_barrel_imports(
+        &self,
+        repository: Repository,
+    ) -> Result<Vec<ValidationFailure>, ValidateExternalBarrelImportsError> {
+        let dependencies: DependencyList<RepositoryChildPath, RepositoryChildPath> =
+            repository.try_into()?;
+
+        Ok(dependencies
+            .as_ref()
+            .iter()
+            .filter(|dependency| !dependency.is_internal())
+            .filter_map(|dependency| {
+                if dependency.to.is_barrel() {
+                    None
+                } else {
+                    Some(ValidationFailure::ExternalBarrelImport(dependency.clone()))
+                }
+            })
+            .collect())
+    }
+}
