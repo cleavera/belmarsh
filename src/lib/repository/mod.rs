@@ -26,7 +26,9 @@ impl From<walkdir::Error> for RepositoryFilesError {
 }
 
 #[derive(Debug, Clone)]
-pub struct Repository(RepositoryPath);
+pub struct Repository {
+    path: RepositoryPath,
+}
 
 #[derive(Debug)]
 pub enum RepositoryFromStringError {
@@ -43,7 +45,7 @@ impl TryFrom<String> for Repository {
     type Error = RepositoryFromStringError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(Repository(value.try_into()?))
+        Ok(Repository { path: value.try_into()? })
     }
 }
 
@@ -51,11 +53,15 @@ impl TryFrom<&str> for Repository {
     type Error = RepositoryFromStringError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(Repository(value.try_into()?))
+        Ok(Repository { path: value.try_into()? })
     }
 }
 
 impl Repository {
+    pub fn new(path: RepositoryPath) -> Self {
+        Repository { path }
+    }
+
     pub fn files(
         &self,
     ) -> rayon::iter::Map<
@@ -64,9 +70,9 @@ impl Repository {
             Result<walkdir::DirEntry, walkdir::Error>,
         ) -> Result<RepositoryFile, RepositoryFilesError>,
     > {
-        WalkDir::new(self.0.as_ref()).into_iter().par_bridge().map(
+        WalkDir::new(self.path.as_ref()).into_iter().par_bridge().map(
             |entry| -> Result<RepositoryFile, RepositoryFilesError> {
-                Ok(RepositoryFile::try_from_entry(entry?, &self.0)?)
+                Ok(RepositoryFile::try_from_entry(entry?, &self.path)?)
             },
         )
     }

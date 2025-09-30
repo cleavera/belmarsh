@@ -3,7 +3,7 @@ use std::fmt::Display;
 use belmarsh::{
     dependency::{Dependency, chain::DependencyChain},
     module_mapping::{ModuleMapping, ModuleMappingFromParamStringError},
-    repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath},
+    repository::{Repository, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
 
@@ -46,7 +46,7 @@ pub enum ValidateCommandError {
     CircularFileError(ValidateCircularFilesError),
     ExternalBarrelImportsError(ValidateExternalBarrelImportsError),
     BarrelImportsBarrelError(ValidateBarrelImportsBarrelError),
-    CouldNotParseRepository(RepositoryFromStringError),
+    CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
     CouldNotParseModuleMapCollection(ModuleMappingFromParamStringError),
 }
 
@@ -74,9 +74,9 @@ impl From<ValidateCircularModuleError> for ValidateCommandError {
     }
 }
 
-impl From<RepositoryFromStringError> for ValidateCommandError {
-    fn from(err: RepositoryFromStringError) -> Self {
-        ValidateCommandError::CouldNotParseRepository(err)
+impl From<RepositoryPathFromStringError> for ValidateCommandError {
+    fn from(err: RepositoryPathFromStringError) -> Self {
+        ValidateCommandError::CouldNotCreateRepositoryPath(err)
     }
 }
 
@@ -131,7 +131,7 @@ impl ValidateCommand {
                 .map(|param_string| ModuleMapping::from_param_string(param_string))
                 .collect::<Result<Vec<ModuleMapping>, ModuleMappingFromParamStringError>>()?;
 
-            let repository: Repository = self.repository_path.clone().try_into()?;
+            let repository: Repository = Repository::new(self.repository_path.try_into()?);
 
             if run_all || self.circular_modules {
                 println!("Running circular module validation");
