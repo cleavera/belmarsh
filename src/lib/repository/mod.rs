@@ -6,6 +6,8 @@ use file::{RepositoryFile, RepositoryFileFromEntryError};
 use path::{RepositoryPath, RepositoryPathFromStringError};
 use rayon::prelude::*;
 use walkdir::WalkDir;
+use std::collections::HashMap;
+use crate::module_mapping::ModuleMapping;
 
 #[derive(Debug)]
 pub enum RepositoryFilesError {
@@ -28,6 +30,7 @@ impl From<walkdir::Error> for RepositoryFilesError {
 #[derive(Debug, Clone)]
 pub struct Repository {
     path: RepositoryPath,
+    mappings: HashMap<ModuleMapping, ModuleMapping>,
 }
 
 #[derive(Debug)]
@@ -45,7 +48,7 @@ impl TryFrom<String> for Repository {
     type Error = RepositoryFromStringError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(Repository { path: value.try_into()? })
+        Ok(Repository { path: value.try_into()?, mappings: HashMap::new() })
     }
 }
 
@@ -53,13 +56,13 @@ impl TryFrom<&str> for Repository {
     type Error = RepositoryFromStringError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(Repository { path: value.try_into()? })
+        Ok(Repository { path: value.try_into()?, mappings: HashMap::new() })
     }
 }
 
 impl Repository {
-    pub fn new(path: RepositoryPath) -> Self {
-        Repository { path }
+    pub fn new(path: RepositoryPath, mappings: HashMap<ModuleMapping, ModuleMapping>) -> Self {
+        Repository { path, mappings }
     }
 
     pub fn files(

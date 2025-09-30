@@ -6,6 +6,7 @@ use belmarsh::{
     repository::{Repository, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
+use std::collections::HashMap;
 
 pub mod barrel_imports_barrel;
 pub mod circular_files;
@@ -125,13 +126,16 @@ impl ValidateCommand {
             || self.external_barrel_imports
             || self.barrel_imports_barrel
         {
-            let module_mappings: Vec<ModuleMapping> = self
+            let module_mappings: HashMap<ModuleMapping, ModuleMapping> = self
                 .module_mapping_params
                 .iter()
-                .map(|param_string| ModuleMapping::from_param_string(param_string))
-                .collect::<Result<Vec<ModuleMapping>, ModuleMappingFromParamStringError>>()?;
+                .map(|param_string| {
+                    let mapping = ModuleMapping::from_param_string(param_string)?;
+                    Ok((mapping.clone(), mapping))
+                })
+                .collect::<Result<HashMap<ModuleMapping, ModuleMapping>, ModuleMappingFromParamStringError>>()?;
 
-            let repository: Repository = Repository::new(self.repository_path.try_into()?);
+            let repository: Repository = Repository::new(self.repository_path.try_into()?, module_mappings);
 
             if run_all || self.circular_modules {
                 println!("Running circular module validation");
