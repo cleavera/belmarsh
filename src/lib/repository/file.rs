@@ -2,6 +2,7 @@ use crate::file_parent_path::FileParentPath;
 use crate::file_path::{FilePath, FilePathContentsError, FilePathFromEntryError};
 use crate::import_path::{ImportPath, ImportPathFromImportStringError};
 use crate::module::Module;
+use crate::module_mapping::ModuleMapping;
 use crate::repository::{
     child::{
         RepositoryChildPath, RepositoryChildPathFromFilePathError, RepositoryChildPathModuleError,
@@ -11,6 +12,7 @@ use crate::repository::{
 use lazy_static::lazy_static;
 use once_cell::sync::OnceCell;
 use regex::Regex;
+use std::collections::HashMap;
 use std::{io::BufRead, path::PathBuf};
 
 #[derive(Debug)]
@@ -59,6 +61,7 @@ impl From<FilePathContentsError> for RepositoryFileResolveImportsError {
 pub struct RepositoryFile {
     file_path: FilePath,
     base_path: RepositoryPath,
+    import_mappings: HashMap<ModuleMapping, ModuleMapping>,
 
     module: OnceCell<Module>,
     imports: OnceCell<Vec<ImportPath>>,
@@ -74,6 +77,7 @@ impl RepositoryFile {
     pub fn try_from_entry(
         entry: walkdir::DirEntry,
         base_path: &RepositoryPath,
+        import_mappings: HashMap<ModuleMapping, ModuleMapping>,
     ) -> Result<Self, RepositoryFileFromEntryError> {
         let file_path: FilePath = entry
             .try_into()
@@ -82,6 +86,7 @@ impl RepositoryFile {
         Ok(RepositoryFile {
             file_path,
             base_path: base_path.clone(),
+            import_mappings,
             module: OnceCell::new(),
             imports: OnceCell::new(),
         })

@@ -10,7 +10,9 @@ pub enum ModuleMappingFromParamStringError {
 }
 
 impl ModuleMapping {
-    pub fn from_param_string(param_string: &str) -> Result<Self, ModuleMappingFromParamStringError> {
+    pub fn from_param_string(
+        param_string: &str,
+    ) -> Result<Self, ModuleMappingFromParamStringError> {
         let parts: Vec<&str> = param_string.splitn(2, ':').collect();
         if parts.len() == 2 {
             Ok(ModuleMapping {
@@ -18,7 +20,9 @@ impl ModuleMapping {
                 to: parts[1].to_string(),
             })
         } else {
-            Err(ModuleMappingFromParamStringError::InvalidFormat(param_string.to_string()))
+            Err(ModuleMappingFromParamStringError::InvalidFormat(
+                param_string.to_string(),
+            ))
         }
     }
 

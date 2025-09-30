@@ -37,7 +37,11 @@ pub struct ValidateCommand {
     #[arg(long, help = "Run barrel imports barrel validation")]
     barrel_imports_barrel: bool,
 
-    #[arg(long, help = "Add a module mapping e.g. --module-mapping @prefix:./path/to/modules", value_name = "ALIAS:PATH")]
+    #[arg(
+        long,
+        help = "Add a module mapping e.g. --module-mapping @prefix:./path/to/modules",
+        value_name = "ALIAS:PATH"
+    )]
     module_mapping_params: Vec<String>,
 }
 
@@ -126,16 +130,20 @@ impl ValidateCommand {
             || self.external_barrel_imports
             || self.barrel_imports_barrel
         {
-            let module_mappings: HashMap<ModuleMapping, ModuleMapping> = self
-                .module_mapping_params
-                .iter()
-                .map(|param_string| {
-                    let mapping = ModuleMapping::from_param_string(param_string)?;
-                    Ok((mapping.clone(), mapping))
-                })
-                .collect::<Result<HashMap<ModuleMapping, ModuleMapping>, ModuleMappingFromParamStringError>>()?;
+            let module_mappings: HashMap<ModuleMapping, ModuleMapping> =
+                self.module_mapping_params
+                    .iter()
+                    .map(|param_string| {
+                        let mapping = ModuleMapping::from_param_string(param_string)?;
+                        Ok((mapping.clone(), mapping))
+                    })
+                    .collect::<Result<
+                        HashMap<ModuleMapping, ModuleMapping>,
+                        ModuleMappingFromParamStringError,
+                    >>()?;
 
-            let repository: Repository = Repository::new(self.repository_path.try_into()?, module_mappings);
+            let repository: Repository =
+                Repository::new(self.repository_path.try_into()?, module_mappings);
 
             if run_all || self.circular_modules {
                 println!("Running circular module validation");

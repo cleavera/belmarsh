@@ -2,12 +2,12 @@ pub mod child;
 pub mod file;
 pub mod path;
 
+use crate::module_mapping::ModuleMapping;
 use file::{RepositoryFile, RepositoryFileFromEntryError};
 use path::{RepositoryPath, RepositoryPathFromStringError};
 use rayon::prelude::*;
-use walkdir::WalkDir;
 use std::collections::HashMap;
-use crate::module_mapping::ModuleMapping;
+use walkdir::WalkDir;
 
 #[derive(Debug)]
 pub enum RepositoryFilesError {
@@ -48,7 +48,10 @@ impl TryFrom<String> for Repository {
     type Error = RepositoryFromStringError;
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        Ok(Repository { path: value.try_into()?, mappings: HashMap::new() })
+        Ok(Repository {
+            path: value.try_into()?,
+            mappings: HashMap::new(),
+        })
     }
 }
 
@@ -56,7 +59,10 @@ impl TryFrom<&str> for Repository {
     type Error = RepositoryFromStringError;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(Repository { path: value.try_into()?, mappings: HashMap::new() })
+        Ok(Repository {
+            path: value.try_into()?,
+            mappings: HashMap::new(),
+        })
     }
 }
 
@@ -73,10 +79,18 @@ impl Repository {
             Result<walkdir::DirEntry, walkdir::Error>,
         ) -> Result<RepositoryFile, RepositoryFilesError>,
     > {
-        WalkDir::new(self.path.as_ref()).into_iter().par_bridge().map(
-            |entry| -> Result<RepositoryFile, RepositoryFilesError> {
-                Ok(RepositoryFile::try_from_entry(entry?, &self.path)?)
-            },
-        )
+        let mappings = self.mappings.clone();
+        WalkDir::new(self.path.as_ref())
+            .into_iter()
+            .par_bridge()
+            .map(
+                move |entry| -> Result<RepositoryFile, RepositoryFilesError> {
+                    Ok(RepositoryFile::try_from_entry(
+                        entry?,
+                        &self.path,
+                        mappings.clone(),
+                    )?)
+                },
+            )
     }
 }
