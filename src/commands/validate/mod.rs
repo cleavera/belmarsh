@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use belmarsh::{
     dependency::{Dependency, chain::DependencyChain},
+    module_mapping::{ModuleMapping, ModuleMappingFromParamStringError},
     repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath},
 };
 use clap::{Args, command};
@@ -34,6 +35,9 @@ pub struct ValidateCommand {
 
     #[arg(long, help = "Run barrel imports barrel validation")]
     barrel_imports_barrel: bool,
+
+    #[arg(long, help = "Add a module mapping e.g. --module-mapping @prefix:./path/to/modules", value_name = "ALIAS:PATH")]
+    module_mapping_params: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -43,6 +47,7 @@ pub enum ValidateCommandError {
     ExternalBarrelImportsError(ValidateExternalBarrelImportsError),
     BarrelImportsBarrelError(ValidateBarrelImportsBarrelError),
     CouldNotParseRepository(RepositoryFromStringError),
+    CouldNotParseModuleMapCollection(ModuleMappingFromParamStringError),
 }
 
 impl From<ValidateBarrelImportsBarrelError> for ValidateCommandError {
@@ -72,6 +77,12 @@ impl From<ValidateCircularModuleError> for ValidateCommandError {
 impl From<RepositoryFromStringError> for ValidateCommandError {
     fn from(err: RepositoryFromStringError) -> Self {
         ValidateCommandError::CouldNotParseRepository(err)
+    }
+}
+
+impl From<ModuleMappingFromParamStringError> for ValidateCommandError {
+    fn from(err: ModuleMappingFromParamStringError) -> Self {
+        ValidateCommandError::CouldNotParseModuleMapCollection(err)
     }
 }
 
@@ -114,6 +125,12 @@ impl ValidateCommand {
             || self.external_barrel_imports
             || self.barrel_imports_barrel
         {
+            let module_mappings: Vec<ModuleMapping> = self
+                .module_mapping_params
+                .iter()
+                .map(|param_string| ModuleMapping::from_param_string(param_string))
+                .collect::<Result<Vec<ModuleMapping>, ModuleMappingFromParamStringError>>()?;
+
             let repository: Repository = self.repository_path.clone().try_into()?;
 
             if run_all || self.circular_modules {

@@ -4,3 +4,4 @@ pub mod file_path;
 pub mod import_path;
 pub mod module;
 pub mod repository;
+pub mod module_mapping;
