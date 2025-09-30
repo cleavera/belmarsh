@@ -46,7 +46,8 @@ pub struct ValidateCommand {
     #[arg(
         long,
         help = "Folders to skip when walking the repository (e.g. node_modules)",
-        value_name = "FOLDER_NAME"
+        value_name = "FOLDER_NAME",
+        default_value = "node_modules"
     )]
     skip_folders: Vec<String>,
 }
