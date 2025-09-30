@@ -25,6 +25,9 @@ pub struct ValidateCommand {
 
     #[arg(long, help = "Run external barrel validation")]
     external_barrel_imports: bool,
+
+    #[arg(long, help = "Run barrel imports barrel validation")]
+    barrel_imports_barrel: bool,
 }
 
 #[derive(Debug)]
@@ -32,7 +35,14 @@ pub enum ValidateCommandError {
     CircularModuleError(ValidateCircularModuleError),
     CircularFileError(ValidateCircularFilesError),
     ExternalBarrelImportsError(ValidateExternalBarrelImportsError),
+    BarrelImportsBarrelError(ValidateBarrelImportsBarrelError),
     CouldNotParseRepository(RepositoryFromStringError),
+}
+
+impl From<ValidateBarrelImportsBarrelError> for ValidateCommandError {
+    fn from(value: ValidateBarrelImportsBarrelError) -> Self {
+        ValidateCommandError::BarrelImportsBarrelError(value)
+    }
 }
 
 impl From<ValidateExternalBarrelImportsError> for ValidateCommandError {
@@ -92,9 +102,21 @@ impl From<DependencyListFromRepositoryError> for ValidateExternalBarrelImportsEr
     }
 }
 
+#[derive(Debug)]
+pub enum ValidateBarrelImportsBarrelError {
+    CouldNotGetDependencies(DependencyListFromRepositoryError),
+}
+
+impl From<DependencyListFromRepositoryError> for ValidateBarrelImportsBarrelError {
+    fn from(value: DependencyListFromRepositoryError) -> Self {
+        ValidateBarrelImportsBarrelError::CouldNotGetDependencies(value)
+    }
+}
+
 enum ValidationFailure {
     CircularDependency(DependencyChain),
     ExternalBarrelImport(Dependency<RepositoryChildPath, RepositoryChildPath>),
+    BarrelImportsBarrel(Dependency<RepositoryChildPath, RepositoryChildPath>),
 }
 
 impl Display for ValidationFailure {
@@ -110,16 +132,25 @@ impl Display for ValidationFailure {
                     dependency
                 )
             }
+            ValidationFailure::BarrelImportsBarrel(dependency) => {
+                write!(f, "Barrel file imports another barrel file: {}", dependency)
+            }
         }
     }
 }
 
 impl ValidateCommand {
     pub fn run(self) -> Result<(), ValidateCommandError> {
-        let run_all =
-            !self.circular_modules && !self.circular_files && !self.external_barrel_imports;
+        let run_all = !self.circular_modules
+            && !self.circular_files
+            && !self.external_barrel_imports
+            && !self.barrel_imports_barrel;
 
-        if run_all || self.circular_modules || self.circular_files || self.external_barrel_imports {
+        if run_all
+            || self.circular_modules
+            || self.circular_files
+            || self.external_barrel_imports
+            || self.barrel_imports_barrel {
             let repository: Repository = self.repository_path.clone().try_into()?;
 
             if run_all || self.circular_modules {
@@ -147,6 +178,17 @@ impl ValidateCommand {
             if run_all || self.external_barrel_imports {
                 println!("\nRunning external barrel import validation");
                 let failures = self.validate_external_barrel_imports(repository.clone())?;
+
+                for failure in failures.iter() {
+                    println!("{}", failure);
+                }
+
+                println!("\n\nTotal: {}", failures.len());
+            }
+
+            if run_all || self.barrel_imports_barrel {
+                println!("\nRunning barrel imports barrel validation");
+                let failures = self.validate_barrel_imports_barrel(repository.clone())?;
 
                 for failure in failures.iter() {
                     println!("{}", failure);
@@ -226,6 +268,26 @@ impl ValidateCommand {
                     None
                 } else {
                     Some(ValidationFailure::ExternalBarrelImport(dependency.clone()))
+                }
+            })
+            .collect())
+    }
+
+    fn validate_barrel_imports_barrel(
+        &self,
+        repository: Repository,
+    ) -> Result<Vec<ValidationFailure>, ValidateBarrelImportsBarrelError> {
+        let dependencies: DependencyList<RepositoryChildPath, RepositoryChildPath> =
+            repository.try_into()?;
+
+        Ok(dependencies
+            .as_ref()
+            .iter()
+            .filter_map(|dependency| {
+                if dependency.from.is_barrel() && dependency.to.is_barrel() {
+                    Some(ValidationFailure::BarrelImportsBarrel(dependency.clone()))
+                } else {
+                    None
                 }
             })
             .collect())
