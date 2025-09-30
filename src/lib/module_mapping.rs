@@ -37,4 +37,35 @@ impl ModuleMapping {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ModuleMappings(HashSet<ModuleMapping>);
+
+#[derive(Debug)]
+pub enum ModuleMappingsFromParamStringsError {
+    InvalidParam(ModuleMappingFromParamStringError),
+}
+
+impl From<ModuleMappingFromParamStringError> for ModuleMappingsFromParamStringsError {
+    fn from(value: ModuleMappingFromParamStringError) -> Self {
+        ModuleMappingsFromParamStringsError::InvalidParam(value)
+    }
+}
+
+impl ModuleMappings {
+    pub fn from_param_strings(
+        param_strings: Vec<String>,
+    ) -> Result<Self, ModuleMappingsFromParamStringsError> {
+        Ok(ModuleMappings(
+            param_strings
+                .iter()
+                .map(|param_string| Ok(ModuleMapping::from_param_string(param_string)?))
+                .collect::<Result<HashSet<ModuleMapping>, ModuleMappingsFromParamStringsError>>()?,
+        ))
+    }
+}
+
+impl From<HashSet<ModuleMapping>> for ModuleMappings {
+    fn from(value: HashSet<ModuleMapping>) -> Self {
+        ModuleMappings(value)
+    }
+}

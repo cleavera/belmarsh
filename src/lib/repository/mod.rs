@@ -2,7 +2,7 @@ pub mod child;
 pub mod file;
 pub mod path;
 
-use crate::module_mapping::ModuleMapping;
+use crate::module_mapping::ModuleMappings;
 use file::{RepositoryFile, RepositoryFileFromEntryError};
 use path::{RepositoryPath, RepositoryPathFromStringError};
 use rayon::prelude::*;
@@ -30,7 +30,7 @@ impl From<walkdir::Error> for RepositoryFilesError {
 #[derive(Debug, Clone)]
 pub struct Repository {
     path: RepositoryPath,
-    mappings: HashSet<ModuleMapping>,
+    mappings: ModuleMappings,
 }
 
 #[derive(Debug)]
@@ -50,7 +50,7 @@ impl TryFrom<String> for Repository {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         Ok(Repository {
             path: value.try_into()?,
-            mappings: HashSet::new(),
+            mappings: HashSet::new().into(),
         })
     }
 }
@@ -61,13 +61,13 @@ impl TryFrom<&str> for Repository {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         Ok(Repository {
             path: value.try_into()?,
-            mappings: HashSet::new(),
+            mappings: HashSet::new().into(),
         })
     }
 }
 
 impl Repository {
-    pub fn new(path: RepositoryPath, mappings: HashSet<ModuleMapping>) -> Self {
+    pub fn new(path: RepositoryPath, mappings: ModuleMappings) -> Self {
         Repository { path, mappings }
     }
 

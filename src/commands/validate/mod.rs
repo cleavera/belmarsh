@@ -2,11 +2,10 @@ use std::fmt::Display;
 
 use belmarsh::{
     dependency::{Dependency, chain::DependencyChain},
-    module_mapping::{ModuleMapping, ModuleMappingFromParamStringError},
+    module_mapping::{ModuleMappingsFromParamStringsError, ModuleMappings},
     repository::{Repository, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
-use std::collections::HashSet;
 
 pub mod barrel_imports_barrel;
 pub mod circular_files;
@@ -52,7 +51,7 @@ pub enum ValidateCommandError {
     ExternalBarrelImportsError(ValidateExternalBarrelImportsError),
     BarrelImportsBarrelError(ValidateBarrelImportsBarrelError),
     CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
-    CouldNotParseModuleMapCollection(ModuleMappingFromParamStringError),
+    CouldNotParseModuleMapCollection(ModuleMappingsFromParamStringsError),
 }
 
 impl From<ValidateBarrelImportsBarrelError> for ValidateCommandError {
@@ -85,8 +84,8 @@ impl From<RepositoryPathFromStringError> for ValidateCommandError {
     }
 }
 
-impl From<ModuleMappingFromParamStringError> for ValidateCommandError {
-    fn from(err: ModuleMappingFromParamStringError) -> Self {
+impl From<ModuleMappingsFromParamStringsError> for ValidateCommandError {
+    fn from(err: ModuleMappingsFromParamStringsError) -> Self {
         ValidateCommandError::CouldNotParseModuleMapCollection(err)
     }
 }
@@ -130,16 +129,8 @@ impl ValidateCommand {
             || self.external_barrel_imports
             || self.barrel_imports_barrel
         {
-            let module_mappings: HashSet<ModuleMapping> =
-                self.module_mapping_params
-                    .iter()
-                    .map(|param_string| {
-                        Ok(ModuleMapping::from_param_string(param_string)?)
-                    })
-                    .collect::<Result<
-                        HashSet<ModuleMapping>,
-                        ModuleMappingFromParamStringError,
-                    >>()?;
+            let module_mappings: ModuleMappings =
+                ModuleMappings::from_param_strings(self.module_mapping_params)?;
 
             let repository: Repository =
                 Repository::new(self.repository_path.try_into()?, module_mappings);
