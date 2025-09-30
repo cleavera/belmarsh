@@ -2,7 +2,8 @@ use std::fmt::Display;
 
 use belmarsh::{
     dependency::{Dependency, chain::DependencyChain},
-    repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath},
+    module_mapping::{ModuleMappings, ModuleMappingsFromParamStringsError},
+    repository::{Repository, child::RepositoryChildPath, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
 
@@ -34,6 +35,21 @@ pub struct ValidateCommand {
 
     #[arg(long, help = "Run barrel imports barrel validation")]
     barrel_imports_barrel: bool,
+
+    #[arg(
+        long,
+        help = "Add a module mapping e.g. --module-mapping @prefix:./path/to/modules",
+        value_name = "ALIAS:PATH"
+    )]
+    module_mapping: Vec<String>,
+
+    #[arg(
+        long,
+        help = "Folders to skip when walking the repository (e.g. node_modules)",
+        value_name = "FOLDER_NAME",
+        default_value = "node_modules"
+    )]
+    skip_folders: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -42,7 +58,8 @@ pub enum ValidateCommandError {
     CircularFileError(ValidateCircularFilesError),
     ExternalBarrelImportsError(ValidateExternalBarrelImportsError),
     BarrelImportsBarrelError(ValidateBarrelImportsBarrelError),
-    CouldNotParseRepository(RepositoryFromStringError),
+    CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
+    CouldNotParseModuleMapCollection(ModuleMappingsFromParamStringsError),
 }
 
 impl From<ValidateBarrelImportsBarrelError> for ValidateCommandError {
@@ -69,9 +86,15 @@ impl From<ValidateCircularModuleError> for ValidateCommandError {
     }
 }
 
-impl From<RepositoryFromStringError> for ValidateCommandError {
-    fn from(err: RepositoryFromStringError) -> Self {
-        ValidateCommandError::CouldNotParseRepository(err)
+impl From<RepositoryPathFromStringError> for ValidateCommandError {
+    fn from(err: RepositoryPathFromStringError) -> Self {
+        ValidateCommandError::CouldNotCreateRepositoryPath(err)
+    }
+}
+
+impl From<ModuleMappingsFromParamStringsError> for ValidateCommandError {
+    fn from(err: ModuleMappingsFromParamStringsError) -> Self {
+        ValidateCommandError::CouldNotParseModuleMapCollection(err)
     }
 }
 
@@ -114,7 +137,14 @@ impl ValidateCommand {
             || self.external_barrel_imports
             || self.barrel_imports_barrel
         {
-            let repository: Repository = self.repository_path.clone().try_into()?;
+            let module_mappings: ModuleMappings =
+                ModuleMappings::from_param_strings(self.module_mapping)?;
+
+            let repository: Repository = Repository::new(
+                self.repository_path.try_into()?,
+                module_mappings,
+                self.skip_folders,
+            );
 
             if run_all || self.circular_modules {
                 println!("Running circular module validation");

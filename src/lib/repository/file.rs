@@ -2,6 +2,7 @@ use crate::file_parent_path::FileParentPath;
 use crate::file_path::{FilePath, FilePathContentsError, FilePathFromEntryError};
 use crate::import_path::{ImportPath, ImportPathFromImportStringError};
 use crate::module::Module;
+use crate::module_mapping::ModuleMappings;
 use crate::repository::{
     child::{
         RepositoryChildPath, RepositoryChildPathFromFilePathError, RepositoryChildPathModuleError,
@@ -59,6 +60,7 @@ impl From<FilePathContentsError> for RepositoryFileResolveImportsError {
 pub struct RepositoryFile {
     file_path: FilePath,
     base_path: RepositoryPath,
+    import_mappings: ModuleMappings,
 
     module: OnceCell<Module>,
     imports: OnceCell<Vec<ImportPath>>,
@@ -74,6 +76,7 @@ impl RepositoryFile {
     pub fn try_from_entry(
         entry: walkdir::DirEntry,
         base_path: &RepositoryPath,
+        import_mappings: ModuleMappings,
     ) -> Result<Self, RepositoryFileFromEntryError> {
         let file_path: FilePath = entry
             .try_into()
@@ -82,6 +85,7 @@ impl RepositoryFile {
         Ok(RepositoryFile {
             file_path,
             base_path: base_path.clone(),
+            import_mappings,
             module: OnceCell::new(),
             imports: OnceCell::new(),
         })
@@ -102,7 +106,7 @@ impl RepositoryFile {
     pub fn imports(&self) -> Result<&[ImportPath], RepositoryFileResolveImportsError> {
         lazy_static! {
             static ref IMPORT_REGEX: Regex =
-                Regex::new(r"import\s*\{[^}]*\}\s*from\s*'(\.[^']+)';")
+                Regex::new(r"import\s*\{[^}]*\}\s*from\s*'([\.\/][^']+)';")
                     .expect("Failed to compile regex");
         }
 
@@ -113,12 +117,14 @@ impl RepositoryFile {
                 let parent_dir: FileParentPath = FileParentPath::from_file_path(&self.file_path);
 
                 for line in reader.lines() {
-                    let line = line.map_err(|e| {
-                        RepositoryFileResolveImportsError::Io(
-                            e,
-                            self.file_path.as_ref().to_path_buf(),
-                        )
-                    })?;
+                    let line = self
+                        .import_mappings
+                        .replace_import_aliases(&line.map_err(|e| {
+                            RepositoryFileResolveImportsError::Io(
+                                e,
+                                self.file_path.as_ref().to_path_buf(),
+                            )
+                        })?);
 
                     if let Some(captures) = IMPORT_REGEX.captures(&line) {
                         if let Some(path_capture) = captures.get(1) {
