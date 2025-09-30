@@ -1,7 +1,8 @@
 use belmarsh::{
     dependency::list::{DependencyList, DependencyListFromRepositoryError},
     module::Module,
-    repository::{Repository, RepositoryFromStringError},
+    module_mapping::ModuleMappings,
+    repository::{Repository, RepositoryFromStringError, path::RepositoryPathFromStringError},
 };
 use clap::{Args, command};
 
@@ -9,12 +10,21 @@ use clap::{Args, command};
 #[command(about = "Output a dependency graph in the dot format")]
 pub struct GraphCommand {
     repository_path: String,
+
+    #[arg(
+        long,
+        help = "Folders to skip when walking the repository (e.g. node_modules)",
+        value_name = "FOLDER_NAME",
+        default_value = "node_modules"
+    )]
+    skip_folders: Vec<String>,
 }
 
 #[derive(Debug)]
 pub enum GraphCommandError {
     CouldNotParseRepository(RepositoryFromStringError),
     CouldNotGetDependencies(DependencyListFromRepositoryError),
+    CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
 }
 
 impl From<RepositoryFromStringError> for GraphCommandError {
@@ -29,9 +39,19 @@ impl From<DependencyListFromRepositoryError> for GraphCommandError {
     }
 }
 
+impl From<RepositoryPathFromStringError> for GraphCommandError {
+    fn from(err: RepositoryPathFromStringError) -> Self {
+        GraphCommandError::CouldNotCreateRepositoryPath(err)
+    }
+}
+
 impl GraphCommand {
     pub fn run(self) -> Result<(), GraphCommandError> {
-        let repository: Repository = self.repository_path.try_into()?;
+        let repository: Repository = Repository::new(
+            self.repository_path.try_into()?,
+            ModuleMappings::from(std::collections::HashSet::new()),
+            self.skip_folders,
+        );
         let dependencies: DependencyList<Module, Module> = repository.try_into()?;
 
         println!("digraph G {{");

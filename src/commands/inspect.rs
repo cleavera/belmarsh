@@ -4,7 +4,11 @@ use belmarsh::{
     dependency::Dependency,
     dependency::list::{DependencyList, DependencyListFromRepositoryError},
     module::Module,
-    repository::{Repository, RepositoryFromStringError, child::RepositoryChildPath},
+    module_mapping::ModuleMappings,
+    repository::{
+        Repository, RepositoryFromStringError, child::RepositoryChildPath,
+        path::RepositoryPathFromStringError,
+    },
 };
 use clap::{Args, command};
 
@@ -15,12 +19,21 @@ pub struct InspectCommand {
 
     #[arg(long)]
     filter_from: Option<String>,
+
+    #[arg(
+        long,
+        help = "Folders to skip when walking the repository (e.g. node_modules)",
+        value_name = "FOLDER_NAME",
+        default_value = "node_modules"
+    )]
+    skip_folders: Vec<String>,
 }
 
 #[derive(Debug)]
 pub enum InspectCommandError {
     CouldNotParseRepository(RepositoryFromStringError),
     CouldNotGetDependencies(DependencyListFromRepositoryError),
+    CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
 }
 
 impl From<RepositoryFromStringError> for InspectCommandError {
@@ -35,9 +48,19 @@ impl From<DependencyListFromRepositoryError> for InspectCommandError {
     }
 }
 
+impl From<RepositoryPathFromStringError> for InspectCommandError {
+    fn from(err: RepositoryPathFromStringError) -> Self {
+        InspectCommandError::CouldNotCreateRepositoryPath(err)
+    }
+}
+
 impl InspectCommand {
     pub fn run(self) -> Result<(), InspectCommandError> {
-        let repository: Repository = self.repository_path.try_into()?;
+        let repository: Repository = Repository::new(
+            self.repository_path.try_into()?,
+            ModuleMappings::from(std::collections::HashSet::new()),
+            self.skip_folders,
+        );
         let dependencies: DependencyList<RepositoryChildPath, Module> = repository.try_into()?;
 
         if let Some(filter_module_name) = self.filter_from {

@@ -1,6 +1,7 @@
 use belmarsh::{
     dependency::Dependency,
     file_path::FilePath,
+    module_mapping::ModuleMappings,
     repository::{
         Repository, RepositoryFilesError, RepositoryFromStringError,
         child::{
@@ -8,6 +9,7 @@ use belmarsh::{
             RepositoryChildPathModuleError,
         },
         file::{RepositoryFileModuleError, RepositoryFileResolveImportsError},
+        path::RepositoryPathFromStringError,
     },
 };
 use clap::{Args, command};
@@ -18,6 +20,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 #[command(about = "Generate statistics")]
 pub struct StatisticsCommand {
     repository_path: String,
+
+    #[arg(
+        long,
+        help = "Folders to skip when walking the repository (e.g. node_modules)",
+        value_name = "FOLDER_NAME",
+        default_value = "node_modules"
+    )]
+    skip_folders: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -28,6 +38,7 @@ pub enum StatisticsCommandError {
     InvalidModule(RepositoryChildPathModuleError),
     CannotGetModuleForRepositoryFile(RepositoryFileModuleError),
     CannotResolveImports(RepositoryFileResolveImportsError),
+    CouldNotCreateRepositoryPath(RepositoryPathFromStringError),
 }
 
 impl From<RepositoryFilesError> for StatisticsCommandError {
@@ -60,9 +71,19 @@ impl From<RepositoryChildPathModuleError> for StatisticsCommandError {
     }
 }
 
+impl From<RepositoryPathFromStringError> for StatisticsCommandError {
+    fn from(err: RepositoryPathFromStringError) -> Self {
+        StatisticsCommandError::CouldNotCreateRepositoryPath(err)
+    }
+}
+
 impl StatisticsCommand {
     pub fn run(self) -> Result<(), StatisticsCommandError> {
-        let repository: Repository = self.repository_path.try_into()?;
+        let repository: Repository = Repository::new(
+            self.repository_path.try_into()?,
+            ModuleMappings::from(std::collections::HashSet::new()),
+            self.skip_folders,
+        );
 
         let file_check_count = AtomicUsize::new(0);
         let counts: Result<Vec<usize>, StatisticsCommandError> = repository
