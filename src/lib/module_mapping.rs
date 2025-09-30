@@ -34,3 +34,5 @@ impl ModuleMapping {
         }
     }
 }
+
+pub struct ModuleMappings(HashMap<ModuleMapping, ModuleMapping>);
